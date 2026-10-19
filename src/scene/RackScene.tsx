@@ -273,9 +273,9 @@ function PiBlade({ x, out, status, offline }: { x: number; out: number; status?:
         <planeGeometry args={[0.12, 0.4]} />
         <meshStandardMaterial color="#3a0808" emissive="#ff2a2a" emissiveIntensity={0.45} toneMapped={false} side={THREE.DoubleSide} />
       </mesh>
-      <PortBlock y={0.22} face="#111" z={z} />
-      <PortBlock y={0.03} face="#1e5fd6" z={z} />
-      <group position={[0, -0.18, z]}>
+      <PortBlock y={-0.01} face="#1e5fd6" z={z} />
+      <PortBlock y={-0.2} face="#111" z={z} />
+      <group position={[0, ETH_Y, z]}>
         <mesh position={[0, 0, -0.14]}>
           <boxGeometry args={[0.25, 0.2, 0.28]} />
           <meshStandardMaterial color={C.steel} metalness={0.6} roughness={0.3} />
@@ -295,6 +295,7 @@ function PiBlade({ x, out, status, offline }: { x: number; out: number; status?:
 }
 
 const bladeX = (i: number) => -0.84 + i * 0.56;
+const ETH_Y = 0.19; // Ethernet jack height within the Pi panel
 const WIN = { w: 0.38, h: 0.7 };
 
 // Faint diagonal hatch, like the 3D-printed infill of the real panel
@@ -317,14 +318,21 @@ function useHatch() {
   }, []);
 }
 
-function Pis({ explode, nodes, offline }: { explode: boolean; nodes: NodeStatus[] | null; offline: boolean }) {
-  const out = useRef(0);
+// How far the Pis are slid out, eased toward the target. Shared by the Pis and their cables.
+function useSlide(explode: boolean) {
+  const cur = useRef(0);
   const [o, setO] = useState(0);
-  const hatch = useHatch();
   useFrame((_, dt) => {
     const tgt = explode ? 0.9 : 0;
-    if (Math.abs(out.current - tgt) > 0.001) { out.current += (tgt - out.current) * (1 - Math.exp(-dt * 6)); setO(out.current); }
+    if (cur.current === tgt) return;
+    cur.current = Math.abs(cur.current - tgt) < 0.002 ? tgt : cur.current + (tgt - cur.current) * (1 - Math.exp(-dt * 6));
+    setO(cur.current);
   });
+  return o;
+}
+
+function Pis({ o, nodes, offline }: { o: number; nodes: NodeStatus[] | null; offline: boolean }) {
+  const hatch = useHatch();
   const H = 2 * U - 0.012;
   const mat = <meshStandardMaterial map={hatch} color="#f2f4f5" roughness={0.65} transparent opacity={0.9} />;
   // strips between the four windows
@@ -396,32 +404,36 @@ function Blank({ h }: { h: number }) {
   );
 }
 
-// Short black patch cables with clear boots: switch port down and looping up into each Pi's Ethernet jack
-function Cables({ explode }: { explode: boolean }) {
-  const sw = uY(3, 1), pi = uY(4, 2);
+// Short black patch cables with clear boots, from the front of each switch port down into the
+// Ethernet jack on top of each Pi's port stack. Rebuilt as the Pis slide so the plugs stay seated.
+function Cables({ o }: { o: number }) {
+  const sw = uY(3, 1) - 0.02, eth = uY(4, 2) + ETH_Y, pi = uY(4, 2);
+  const swZ = FRONT + 0.045, piZ = FRONT - 0.01 + o;
   const lines = useMemo(() => {
     const patch = NODES.map((n, i) => {
-      const sx = portX(n.port), bx = bladeX(i), dz = explode ? 0.9 : 0;
-      const a = new THREE.Vector3(sx, sw - 0.14, FRONT + 0.13);
-      const b = new THREE.Vector3(bx, pi - 0.33 , FRONT + 0.12 + dz);
+      const sx = portX(n.port), bx = bladeX(i);
       return new THREE.CatmullRomCurve3([
-        a,
-        new THREE.Vector3(sx + (bx - sx) * 0.15, sw - 0.45, FRONT + 0.2 + dz * 0.3),
-        new THREE.Vector3((sx + bx) / 2 + (bx < sx ? -0.08 : 0.08), pi - 0.25, FRONT + 0.26 + dz * 0.7),
-        new THREE.Vector3(bx + (sx - bx) * 0.1, pi - 0.58, FRONT + 0.2 + dz),
-        b,
+        new THREE.Vector3(sx, sw, swZ + 0.16),
+        new THREE.Vector3(sx, sw - 0.06, swZ + 0.3),
+        new THREE.Vector3((sx + bx) / 2, (sw + eth) / 2 - 0.04, Math.max(swZ, piZ) + 0.38),
+        new THREE.Vector3(bx, eth + 0.05, piZ + 0.3),
+        new THREE.Vector3(bx, eth, piZ + 0.16),
       ], false, 'centripetal');
     });
     // node-3's micro-HDMI lead to the screen, dropping past the blanks
-    const hx = bladeX(0) - 0.14, dz = explode ? 0.9 : 0;
+    const hx = bladeX(0) - 0.16;
     const hdmi = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(hx + 0.06, pi + 0.12, FRONT + 0.04 + dz),
-      new THREE.Vector3(hx - 0.02, pi - 0.2, FRONT + 0.14 + dz),
-      new THREE.Vector3(hx - 0.04, uY(6, 1), FRONT + 0.12),
+      new THREE.Vector3(hx + 0.04, pi - 0.1, piZ + 0.02),
+      new THREE.Vector3(hx - 0.02, pi - 0.3, piZ + 0.14),
+      new THREE.Vector3(hx - 0.04, uY(6, 1), FRONT + 0.12 + o * 0.4),
       new THREE.Vector3(hx - 0.02, uY(6, 1) - 0.3, FRONT - 0.2),
     ], false, 'centripetal');
-    return { patch, hdmi, ends: NODES.map((n, i) => ({ s: [portX(n.port), sw - 0.07, FRONT + 0.11] as const, b: [bladeX(i), pi - 0.26, FRONT + 0.1 + dz] as const })) };
-  }, [explode, sw, pi]);
+    const ends = NODES.map((n, i) => ({
+      s: [portX(n.port), sw, swZ + 0.08] as THREE.Vector3Tuple,
+      b: [bladeX(i), eth, piZ + 0.08] as THREE.Vector3Tuple,
+    }));
+    return { patch, hdmi, ends };
+  }, [sw, eth, pi, swZ, piZ, o]);
   const pulses = useRef<THREE.Mesh[]>([]);
   useFrame(({ clock }) => {
     pulses.current.forEach((m, i) => {
@@ -441,8 +453,8 @@ function Cables({ explode }: { explode: boolean }) {
             <sphereGeometry args={[0.022, 10, 8]} />
             <meshStandardMaterial color="#fff" emissive={C.accent} emissiveIntensity={3} toneMapped={false} />
           </mesh>
-          <mesh position={lines.ends[i].s as unknown as THREE.Vector3Tuple}><boxGeometry args={[0.12, 0.16, 0.12]} />{boot}</mesh>
-          <mesh position={lines.ends[i].b as unknown as THREE.Vector3Tuple}><boxGeometry args={[0.12, 0.16, 0.12]} />{boot}</mesh>
+          <mesh position={lines.ends[i].s}><boxGeometry args={[0.12, 0.11, 0.16]} />{boot}</mesh>
+          <mesh position={lines.ends[i].b}><boxGeometry args={[0.12, 0.11, 0.16]} />{boot}</mesh>
         </group>
       ))}
       <mesh>
@@ -503,6 +515,7 @@ function Rack({ feed, explode, selected, onSelect }: {
   const nodes = feed.status?.nodes ?? null;
   const offline = feed.mode === 'offline' || !!feed.status?.stale;
   const items = RACK.filter((r) => !r.future);
+  const o = useSlide(explode);
   return (
     <group position={[-0.8, 0, 0]}>
       <Frame />
@@ -512,13 +525,13 @@ function Rack({ feed, explode, selected, onSelect }: {
         return (
           <Hoverable key={it.id} item={it} selected={selected?.id === it.id} onSelect={onSelect} size={size} position={[0, y, 0]}>
             {it.kind === 'switch' && <Switch nodes={nodes} offline={offline} />}
-            {it.kind === 'pis' && <Pis explode={explode} nodes={nodes} offline={offline} />}
+            {it.kind === 'pis' && <Pis o={o} nodes={nodes} offline={offline} />}
             {it.kind === 'screen' && <Screen feed={feed} />}
             {it.kind === 'blank' && <Blank h={it.h} />}
           </Hoverable>
         );
       })}
-      <Cables explode={explode} />
+      <Cables o={o} />
       <NasTower selected={selected?.id === NAS.id} onSelect={onSelect} />
     </group>
   );
