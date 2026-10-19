@@ -247,7 +247,7 @@ function PortBlock({ y, face, z }: { y: number; face: string; z: number }) {
   );
 }
 
-// One Pi 5 on edge in the panel: USB 2 (black), USB 3 (blue) and Ethernet stacked, PoE HAT glowing behind
+// One Pi 5 on edge in the panel: Ethernet, USB 3 (blue) and USB 2 (black) stacked, PoE HAT behind
 function PiBlade({ x, out, status, offline }: { x: number; out: number; status?: NodeStatus; offline: boolean }) {
   const act = useRef<THREE.MeshStandardMaterial>(null);
   const tRef = useRef(Math.random() * 10);
@@ -268,10 +268,6 @@ function PiBlade({ x, out, status, offline }: { x: number; out: number; status?:
       <mesh position={[0.12, 0, z - 0.6]}>
         <boxGeometry args={[0.05, 0.52, 0.65]} />
         <meshStandardMaterial color="#1b1e22" roughness={0.6} />
-      </mesh>
-      <mesh position={[0.24, 0, z - 0.7]}>
-        <planeGeometry args={[0.12, 0.4]} />
-        <meshStandardMaterial color="#3a0808" emissive="#ff2a2a" emissiveIntensity={0.45} toneMapped={false} side={THREE.DoubleSide} />
       </mesh>
       <PortBlock y={-0.01} face="#1e5fd6" z={z} />
       <PortBlock y={-0.2} face="#111" z={z} />
@@ -407,7 +403,7 @@ function Blank({ h }: { h: number }) {
 // Short black patch cables with clear boots, from the front of each switch port down into the
 // Ethernet jack on top of each Pi's port stack. Rebuilt as the Pis slide so the plugs stay seated.
 function Cables({ o }: { o: number }) {
-  const sw = uY(3, 1) - 0.02, eth = uY(4, 2) + ETH_Y, pi = uY(4, 2);
+  const sw = uY(3, 1) - 0.02, eth = uY(4, 2) + ETH_Y;
   const swZ = FRONT + 0.045, piZ = FRONT - 0.01 + o;
   const lines = useMemo(() => {
     const patch = NODES.map((n, i) => {
@@ -420,20 +416,12 @@ function Cables({ o }: { o: number }) {
         new THREE.Vector3(bx, eth, piZ + 0.16),
       ], false, 'centripetal');
     });
-    // node-3's micro-HDMI lead to the screen, dropping past the blanks
-    const hx = bladeX(0) - 0.16;
-    const hdmi = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(hx + 0.04, pi - 0.1, piZ + 0.02),
-      new THREE.Vector3(hx - 0.02, pi - 0.3, piZ + 0.14),
-      new THREE.Vector3(hx - 0.04, uY(6, 1), FRONT + 0.12 + o * 0.4),
-      new THREE.Vector3(hx - 0.02, uY(6, 1) - 0.3, FRONT - 0.2),
-    ], false, 'centripetal');
     const ends = NODES.map((n, i) => ({
       s: [portX(n.port), sw, swZ + 0.08] as THREE.Vector3Tuple,
       b: [bladeX(i), eth, piZ + 0.08] as THREE.Vector3Tuple,
     }));
-    return { patch, hdmi, ends };
-  }, [sw, eth, pi, swZ, piZ, o]);
+    return { patch, ends };
+  }, [sw, eth, swZ, piZ]);
   const pulses = useRef<THREE.Mesh[]>([]);
   useFrame(({ clock }) => {
     pulses.current.forEach((m, i) => {
@@ -457,10 +445,6 @@ function Cables({ o }: { o: number }) {
           <mesh position={lines.ends[i].b}><boxGeometry args={[0.12, 0.11, 0.16]} />{boot}</mesh>
         </group>
       ))}
-      <mesh>
-        <tubeGeometry args={[lines.hdmi, 40, 0.02, 8, false]} />
-        <meshStandardMaterial color="#121315" roughness={0.55} />
-      </mesh>
     </group>
   );
 }
