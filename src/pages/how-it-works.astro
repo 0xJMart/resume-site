@@ -1,0 +1,100 @@
+---
+import Base from '../layouts/Base.astro';
+---
+<Base title="How this site works, Joe Martinez" description="The path a visit to joe-martinez.com takes, from Cloudflare to a Raspberry Pi cluster at home, and how a change gets deployed.">
+  <a class="skip" href="#main">Skip to the diagram</a>
+  <main id="main" class="how">
+    <p class="back"><a href="/">Back to the rack</a></p>
+    <h1>How this site works</h1>
+    <p class="lede">
+      joe-martinez.com is served from four Raspberry Pis in a 10-inch rack at my place. Here is the path a visit takes,
+      and how a change gets from my laptop to the cluster.
+    </p>
+
+    <section aria-labelledby="visit-h">
+      <h2 id="visit-h">A visit</h2>
+      <ol class="flow">
+        <li class="node edge">
+          <h3>Cloudflare</h3>
+          <p class="where">Edge, outside my network</p>
+          <p>DNS, HTTPS for visitors, and a cache in front of everything. If my homelab is down, Cloudflare still serves the last copy of the pages.</p>
+        </li>
+        <li class="node">
+          <h3>Home router</h3>
+          <p class="where">UniFi gateway</p>
+          <p>Forwards HTTPS to the cluster's ingress address, handed out by MetalLB.</p>
+        </li>
+        <li class="node">
+          <h3>Traefik</h3>
+          <p class="where">Kubernetes ingress, on the Pis</p>
+          <p>Routes by hostname, sends www to the bare domain, and terminates TLS with a Let's Encrypt certificate that cert-manager renews.</p>
+        </li>
+        <li class="node">
+          <h3>nginx</h3>
+          <p class="where">Two pods on different Pis</p>
+          <p>One container image holding the whole site. A disruption budget keeps one pod up while the other restarts.</p>
+          <ol class="split">
+            <li class="node leaf">
+              <h3>The pages</h3>
+              <p class="where">Static files</p>
+              <p>Built with Astro. The 3D rack is three.js and only loads once it's on screen.</p>
+            </li>
+            <li class="node">
+              <h3>Live status</h3>
+              <p class="where">/api/status, cached 30 seconds</p>
+              <p>nginx asks the rack-display status service, which keeps a summary of the cluster.</p>
+              <ol class="flow inner">
+                <li class="node">
+                  <h3>Status service</h3>
+                  <p class="where">Node.js, rack-display</p>
+                  <p>Turns cluster state into the face on the rack's screen and a short public summary: node health, CPU, temperature and this site's uptime. No hostnames, IPs or app names leave it.</p>
+                </li>
+                <li class="node leaf">
+                  <h3>Prometheus and Alertmanager</h3>
+                  <p class="where">kube-prometheus-stack</p>
+                  <p>Fed by node-exporter on each Pi, kube-state-metrics, PoE data from the UniFi switch, the NAS, and a probe that loads this site every minute.</p>
+                </li>
+              </ol>
+            </li>
+          </ol>
+        </li>
+      </ol>
+    </section>
+
+    <section aria-labelledby="change-h">
+      <h2 id="change-h">A change</h2>
+      <ol class="flow">
+        <li class="node">
+          <h3>git push</h3>
+          <p class="where"><a href="https://github.com/0xJMart/resume-site">github.com/0xJMart/resume-site</a></p>
+          <p>Resume content lives in one YAML file. The page, the printable resume and the PDF all render from it.</p>
+        </li>
+        <li class="node">
+          <h3>GitHub Actions</h3>
+          <p class="where">CI</p>
+          <p>Type-checks and builds the site, renders the PDF and preview images in a headless browser, and pushes an arm64 image to GitHub's container registry.</p>
+        </li>
+        <li class="node">
+          <h3>Flux</h3>
+          <p class="where">GitOps, in the cluster</p>
+          <p>Spots the new image tag, commits it to my homelab repo, and applies it. Nothing is deployed by hand.</p>
+        </li>
+        <li class="node">
+          <h3>Kubernetes</h3>
+          <p class="where">k0s on four Raspberry Pi 5s</p>
+          <p>Rolls the two pods one at a time.</p>
+        </li>
+        <li class="node leaf">
+          <h3>Uptime probe</h3>
+          <p class="where">Blackbox exporter</p>
+          <p>Loads the public URL every minute. If it fails, the face on the rack's screen goes wide-eyed and the uptime figure on the front page drops.</p>
+        </li>
+      </ol>
+    </section>
+
+    <p class="foot">
+      The rest of the homelab runs the same way: Keycloak for single sign-on, Sealed Secrets, CloudNativePG, and an Unraid NAS for storage,
+      all from one Git repository. <a href="/">Back to the rack</a>.
+    </p>
+  </main>
+</Base>

@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import { Face } from './face';
 import { NAS, NODES, RACK, RACK_U, type RackItem } from './rack';
-import { fetchStatus, mockStatus, type Feed, type NodeStatus } from './status';
+import { fetchStatus, mockStatus, type Feed, type NodeStatus, type PublicStatus } from './status';
 
 // Scene units: 1 = 10 cm. A rack unit is 44.45 mm. y = 0 is the middle of the 8U mounting space.
 const U = 0.4445;
@@ -600,6 +600,15 @@ function readout(feed: Feed): string {
   return `${feed.mode === 'mock' ? 'Demo data. ' : ''}${up} of ${s.nodes.length} nodes up. ${state}`;
 }
 
+function uptimeLine(u: NonNullable<PublicStatus['uptime']>): string {
+  const pct = u.pct === 100 ? '100' : u.pct.toFixed(2).replace(/0$/, '');
+  if (u.hours >= u.windowDays * 24 - 1) return `This site: ${pct}% uptime over the last ${u.windowDays} days.`;
+  const age = u.hours < 1 ? `${Math.max(1, Math.round(u.hours * 60))} minutes`
+    : u.hours < 48 ? `${Math.round(u.hours)} hour${Math.round(u.hours) === 1 ? '' : 's'}`
+    : `${Math.round(u.hours / 24)} days`;
+  return `This site: ${pct}% uptime since it went live ${age} ago.`;
+}
+
 export default function RackScene() {
   const feed = useFeed();
   const [active, setActive] = useState<string | null>('screen');
@@ -664,6 +673,7 @@ export default function RackScene() {
 
       <div className="readout" aria-live="polite">
         <p><span className={`led ${live ? 'on' : 'off'}`} aria-hidden="true" />{readout(feed)}</p>
+        {s?.uptime && <p className="uptime">{uptimeLine(s.uptime)}</p>}
         {shot === 'pis' && s && (
           <table>
             <caption className="sr-only">Live node stats</caption>

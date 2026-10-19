@@ -18,6 +18,8 @@ export interface PublicStatus {
   podsHealthy: boolean;
   fluxHealthy: boolean;
   sitesUp: string;
+  // this site's uptime from its blackbox probe; hours < windowDays*24 while it's younger than the window
+  uptime?: { pct: number; hours: number; windowDays: number } | null;
 }
 
 export type Feed = { mode: 'live' | 'mock' | 'offline'; status: PublicStatus | null };
@@ -42,6 +44,7 @@ export function mockStatus(t: number): PublicStatus {
     podsHealthy: emote !== 'crash',
     fluxHealthy: true,
     sitesUp: '8/8',
+    uptime: { pct: 99.97, hours: 168, windowDays: 7 },
   };
 }
 

@@ -50,6 +50,7 @@ p { margin: 0 0 1em; }
   backdrop-filter: blur(6px);
 }
 .readout p { margin: 0; }
+.readout .uptime { margin-top: 4px; padding-left: 16px; }
 .readout table { margin-top: 10px; border-collapse: collapse; color: var(--ink); }
 .readout th { font-weight: 500; text-align: left; padding: 2px 18px 2px 0; }
 .readout td { padding: 2px 18px 2px 0; color: var(--graphite); }
@@ -128,3 +129,37 @@ p { margin: 0 0 1em; }
   .readout { left: 12px; bottom: 10px; font-size: .8rem; padding: 6px 10px; }
   .readout table { display: none; }
 }
+
+/* ---------- /how-it-works: the request path as boxes joined by arrows ---------- */
+.how { max-width: 46rem; margin: 0 auto; padding: 56px 20px 40px; }
+.how .back { margin: 0 0 40px; font-weight: 500; }
+.how h1 { font-size: clamp(2.2rem, 5vw, 3.4rem); font-weight: 800; letter-spacing: -.01em; margin-bottom: 18px; }
+.how .lede { font-size: 1.15rem; max-width: 38rem; }
+.how section { margin-top: 64px; }
+.how h2 { font-size: clamp(1.5rem, 3vw, 2rem); font-weight: 750; margin-bottom: 24px; }
+.flow, .split { list-style: none; margin: 0; padding: 0; }
+.flow > .node { position: relative; margin-bottom: 34px; }
+/* the arrow from each box to the next */
+.flow > .node:not(.leaf)::after {
+  content: ''; position: absolute; left: 28px; top: 100%; height: 34px; border-left: 1.5px solid var(--ink);
+}
+.flow > .node:not(.leaf)::before {
+  content: ''; position: absolute; left: 24px; top: calc(100% + 26px);
+  border: 5px solid transparent; border-top: 8px solid var(--ink); border-bottom: 0;
+}
+.flow > .node:has(.split)::after, .flow > .node:has(.split)::before { display: none; }
+.node {
+  border: 1.5px solid var(--ink); border-radius: 3px; padding: 14px 18px 4px; background: var(--alu-hi);
+}
+.node.edge { border-style: dashed; }
+.node h3 { font-size: 1.05rem; font-weight: 700; }
+.node .where { font-size: .9rem; color: var(--graphite); margin: 2px 0 8px; }
+.node p { max-width: 36rem; }
+/* nginx fans out to the pages and the live-status path */
+.split { display: grid; grid-template-columns: 1fr 1.4fr; gap: 16px; margin: 6px -4px 14px; align-items: start; }
+.split > .node { background: var(--alu); }
+.flow.inner { margin-top: 10px; }
+.flow.inner > .node { background: var(--alu-hi); margin-bottom: 30px; }
+.flow.inner > .node:last-child { margin-bottom: 14px; }
+@media (max-width: 640px) { .split { grid-template-columns: 1fr; } }
+.how .foot { padding: 32px 0 24px; }
