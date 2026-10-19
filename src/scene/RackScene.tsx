@@ -62,23 +62,43 @@ function useFeed(): Feed {
 
 /* ------------------------------ parts ---------------------------------- */
 
+// Parts are made of many meshes, so moving between two of them fires out-then-over. Clearing hover
+// after a short grace period (cancelled by the next over) keeps the outline and cursor steady.
+const hovered = new Set<string>();
+const setCursor = () => { document.body.style.cursor = hovered.size ? 'pointer' : ''; };
+const noRaycast = () => null;
+
 function Hoverable({ item, selected, onSelect, children, size, position }: {
   item: Selectable; selected: boolean; onSelect: (i: Selectable) => void;
   children: ReactNode; size: [number, number, number]; position: [number, number, number];
 }) {
   const [hover, setHover] = useState(false);
-  const over = (e: ThreeEvent<PointerEvent>) => { e.stopPropagation(); setHover(true); document.body.style.cursor = 'pointer'; };
-  const out = () => { setHover(false); document.body.style.cursor = ''; };
-  useEffect(() => () => { document.body.style.cursor = ''; }, []);
+  const leave = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const over = (e: ThreeEvent<PointerEvent>) => {
+    e.stopPropagation();
+    clearTimeout(leave.current);
+    hovered.add(item.id);
+    setCursor();
+    setHover(true);
+  };
+  const out = () => {
+    clearTimeout(leave.current);
+    leave.current = setTimeout(() => {
+      hovered.delete(item.id);
+      setCursor();
+      setHover(false);
+    }, 60);
+  };
+  useEffect(() => () => { clearTimeout(leave.current); hovered.delete(item.id); setCursor(); }, [item.id]);
   return (
     <group position={position} onPointerOver={over} onPointerOut={out}
       onClick={(e) => { e.stopPropagation(); onSelect(item); }}>
       {children}
       {(hover || selected) && (
-        <mesh position={[0, 0, 0.15]}>
+        <mesh position={[0, 0, 0.15]} raycast={noRaycast}>
           <boxGeometry args={[size[0] + 0.06, size[1] + 0.02, size[2] + 0.3]} />
           <meshBasicMaterial transparent opacity={0} depthWrite={false} />
-          <Edges color={selected ? C.accent : '#ffffff'} lineWidth={selected ? 2 : 1} />
+          <Edges color={selected ? C.accent : '#ffffff'} lineWidth={selected ? 2 : 1} raycast={noRaycast} />
         </mesh>
       )}
     </group>
