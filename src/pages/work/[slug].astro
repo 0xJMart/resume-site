@@ -1,0 +1,22 @@
+---
+import { getCollection, render } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+
+export async function getStaticPaths() {
+  const studies = (await getCollection('caseStudies')).sort((a, b) => a.data.order - b.data.order);
+  return studies.map((entry, i) => ({ params: { slug: entry.id }, props: { entry, next: studies[(i + 1) % studies.length] } }));
+}
+const { entry, next } = Astro.props;
+const { Content } = await render(entry);
+---
+<Base title={`${entry.data.title}, Joe Martinez`} description={entry.data.summary}>
+  <a class="skip" href="#main">Skip to the write-up</a>
+  <main id="main" class="how study">
+    <p class="back"><a href="/#projects">Back to the rack</a></p>
+    <h1>{entry.data.title}</h1>
+    <p class="lede">{entry.data.summary}</p>
+    <p class="meta">{entry.data.date}. Built with {entry.data.stack.slice(0, -1).join(', ')} and {entry.data.stack.at(-1)}.</p>
+    <article class="prose"><Content /></article>
+    <p class="foot">Next: <a href={`/work/${next.id}`}>{next.data.title}</a>. Or go <a href="/#projects">back to the rack</a>.</p>
+  </main>
+</Base>

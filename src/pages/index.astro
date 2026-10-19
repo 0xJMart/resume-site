@@ -1,7 +1,10 @@
 ---
 import Base from '../layouts/Base.astro';
 import RackScene from '../scene/RackScene';
+import { getCollection } from 'astro:content';
 import { resume, fmtMonth, certStatus } from '../data/resume';
+
+const studies = (await getCollection('caseStudies')).sort((a, b) => a.data.order - b.data.order);
 
 const certs = resume.certifications.map((c) => ({ ...c, ...certStatus(c) }))
   .sort((a, b) => Number(b.active) - Number(a.active) || String(b.issued).localeCompare(String(a.issued)));
@@ -61,6 +64,13 @@ const year = (ym: string) => (ym === 'present' ? 'now' : String(ym).slice(0, 4))
             <p class="built">Built with {p.tags.slice(0, -1).join(', ')} and {p.tags.at(-1)}.</p>
           </article>
         ))}
+
+        <h3 class="sub">Write-ups</h3>
+        <ul class="studies">
+          {studies.map((c) => (
+            <li><a href={`/work/${c.id}`}>{c.data.title}</a><span>{c.data.summary}</span></li>
+          ))}
+        </ul>
       </section>
 
       <section class="unit" data-rack="blank" aria-labelledby="skills-h">

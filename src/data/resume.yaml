@@ -111,11 +111,11 @@ projects:
   - name: Homelab platform
     blurb: Four Raspberry Pi 5s running k0s, managed entirely by Flux. Keycloak SSO, Sealed Secrets, CloudNativePG, kube-prometheus-stack, cert-manager, MetalLB and Traefik, backed by an Unraid NAS. This site is served from it.
     tags: [k0s, Flux, Prometheus, Keycloak]
-    link: /how-it-works
+    link: /work/gitops-homelab
   - name: rack-display
     blurb: An animated face on the rack's 2U touchscreen whose expression follows cluster health from Prometheus and Alertmanager. Runs as a kiosk pod, ships its own exporters and an iPhone widget.
     tags: [Prometheus, Alertmanager, a Chromium kiosk pod, custom exporters]
-    link: https://github.com/0xJMart/rack-display
+    link: /work/rack-display
   - name: ML platform on the homelab
     blurb: "MLflow, Argo Workflows and object storage on the cluster, then a GPU node for vLLM serving and an LLM ops assistant traced with Arize Phoenix."
     tags: [MLflow, Argo, vLLM, Phoenix]

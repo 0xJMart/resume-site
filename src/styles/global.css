@@ -101,6 +101,11 @@ p { margin: 0 0 1em; }
 .project h3 { font-size: 1.35rem; font-weight: 720; margin-bottom: 10px; }
 .project .status { font-stretch: 100%; font-size: .9rem; font-weight: 600; color: var(--pcb); margin-left: 10px; }
 .project .built { color: var(--graphite); font-size: .95rem; }
+.studies { list-style: none; padding: 0; margin: 0; max-width: 36rem; }
+.studies li { padding: 14px 0; border-top: 1.5px solid var(--rule); }
+.studies li:last-child { border-bottom: 1.5px solid var(--rule); }
+.studies a { font-weight: 650; font-size: 1.05rem; }
+.studies span { display: block; color: var(--graphite); font-size: .95rem; margin-top: 4px; }
 
 /* skills, certs, education */
 .sub { font-size: 1.15rem; font-weight: 700; margin: 40px 0 14px; }
@@ -163,3 +168,19 @@ p { margin: 0 0 1em; }
 .flow.inner > .node:last-child { margin-bottom: 14px; }
 @media (max-width: 640px) { .split { grid-template-columns: 1fr; } }
 .how .foot { padding: 32px 0 24px; }
+
+/* ---------- /work/<slug>: case studies ---------- */
+.study .meta { color: var(--graphite); font-size: .95rem; margin-top: -4px; }
+.prose { margin-top: 48px; font-size: 1.0625rem; }
+.prose h2 { font-size: clamp(1.4rem, 2.6vw, 1.75rem); font-weight: 750; margin: 52px 0 16px; }
+.prose h3 { font-size: 1.1rem; font-weight: 700; margin: 32px 0 10px; }
+.prose p, .prose li { max-width: 40rem; }
+.prose ul, .prose ol { padding-left: 1.2em; }
+.prose li { margin: 6px 0; }
+.prose li::marker { color: var(--pcb); }
+.prose code { font-size: .92em; background: var(--alu-hi); padding: 1px 5px; border-radius: 3px; }
+.prose table { border-collapse: collapse; width: 100%; margin: 18px 0 24px; font-size: .97rem; }
+.prose th, .prose td { text-align: left; vertical-align: top; padding: 8px 14px 8px 0; border-top: 1.5px solid var(--rule); }
+.prose th { font-weight: 600; }
+.prose tr:last-child td { border-bottom: 1.5px solid var(--rule); }
+.prose blockquote { margin: 24px 0; padding: 4px 0 4px 18px; border-left: 3px solid var(--pcb); color: var(--graphite); }
