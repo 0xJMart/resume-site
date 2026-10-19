@@ -116,6 +116,25 @@ function Bar({ size, position }: { size: [number, number, number]; position: [nu
   );
 }
 
+// Alpha map for the top glass: opaque border, hex grid of round vent holes in the middle
+function usePerforation(w: number, d: number) {
+  return useMemo(() => {
+    const px = 120, W = Math.round(w * px), H = Math.round(d * px);
+    const c = document.createElement('canvas');
+    c.width = W; c.height = H;
+    const g = c.getContext('2d')!;
+    g.fillStyle = '#fff'; g.fillRect(0, 0, W, H);
+    g.fillStyle = '#000';
+    const r = 4.5, step = 15, rowH = step * Math.sqrt(3) / 2, margin = 0.22 * px;
+    for (let row = 0, y = margin; y <= H - margin; row++, y += rowH) {
+      for (let x = margin + (row % 2 ? step / 2 : 0); x <= W - margin; x += step) {
+        g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
+      }
+    }
+    return new THREE.CanvasTexture(c);
+  }, [w, d]);
+}
+
 // DeskPi RackMate-style frame: brushed aluminium posts and rails, carry handles on top, small feet
 function Frame() {
   const px = WIDTH / 2 + 0.04, pz = DEPTH / 2 - 0.08;
@@ -127,6 +146,8 @@ function Frame() {
     new THREE.Vector3(s * (px - 0.06), top + 0.42, -pz + 0.35),
     new THREE.Vector3(s * (px - 0.06), top, -pz + 0.05),
   ], false, 'centripetal')), [px, pz, top]);
+  const topW = 2 * px - 0.14, topD = 2 * pz - 0.14;
+  const perf = usePerforation(topW, topD);
   return (
     <group>
       {[[-1, -1], [1, -1], [-1, 1], [1, 1]].map(([x, z], i) => (
@@ -151,6 +172,11 @@ function Frame() {
           {silver}
         </mesh>
       ))}
+      {/* perforated, black-tinted glass top, set inside the top rails */}
+      <mesh position={[0, top - 0.015, 0]} rotation={[-Math.PI / 2, 0, 0]} raycast={noRaycast} renderOrder={1}>
+        <planeGeometry args={[topW, topD]} />
+        <meshPhysicalMaterial color="#05070a" alphaMap={perf} transparent opacity={0.82} roughness={0.08} metalness={0.1} clearcoat={1} clearcoatRoughness={0.05} side={THREE.DoubleSide} depthWrite={false} />
+      </mesh>
       {/* black-tinted glass side panels, set inside the posts and rails */}
       {[-1, 1].map((x) => (
         <mesh key={x} position={[x * px, (top - 0.32 + bottom + 0.2) / 2, 0]} rotation={[0, Math.PI / 2, 0]} raycast={noRaycast} renderOrder={1}>
