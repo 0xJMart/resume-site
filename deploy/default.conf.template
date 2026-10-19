@@ -1,0 +1,52 @@
+# nginx's image runs envsubst on /etc/nginx/templates/*.template at startup (STATUS_URL, RESOLVER).
+proxy_cache_path /tmp/status-cache levels=1 keys_zone=status:1m max_size=1m inactive=1h use_temp_path=off;
+
+server {
+    listen 8080;
+    server_name _;
+    root /usr/share/nginx/html;
+    server_tokens off;
+
+    gzip on;
+    gzip_types text/css application/javascript application/json image/svg+xml;
+
+    add_header X-Content-Type-Options nosniff always;
+    add_header Referrer-Policy strict-origin-when-cross-origin always;
+    add_header X-Frame-Options DENY always;
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; frame-ancestors 'none'" always;
+
+    # Hashed build assets never change
+    location /_astro/ {
+        add_header Cache-Control "public, max-age=31536000, immutable";
+        add_header X-Content-Type-Options nosniff always;
+    }
+
+    # Pages: short browser cache, longer at the edge, and serve stale if the cluster is down
+    location / {
+        try_files $uri $uri/index.html $uri.html =404;
+        add_header Cache-Control "public, max-age=300, s-maxage=3600, stale-if-error=604800";
+        add_header X-Content-Type-Options nosniff always;
+        add_header X-Frame-Options DENY always;
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; frame-ancestors 'none'" always;
+    }
+
+    # Sanitized live rack status from rack-display's status service. Cached here for 30 s so public
+    # traffic never multiplies load on it, and the last good answer is served if it's down.
+    location = /api/status {
+        resolver ${RESOLVER} valid=30s ipv6=off;
+        set $upstream ${STATUS_URL};
+        proxy_pass $upstream;
+        proxy_cache status;
+        proxy_cache_valid 200 30s;
+        proxy_cache_use_stale error timeout http_500 http_502 http_503 http_504 updating;
+        proxy_cache_lock on;
+        proxy_connect_timeout 3s;
+        proxy_read_timeout 5s;
+        proxy_hide_header Cache-Control;
+        add_header Cache-Control "public, max-age=30, s-maxage=30" always;
+        add_header X-Cache $upstream_cache_status always;
+        add_header X-Content-Type-Options nosniff always;
+    }
+
+    location = /healthz { access_log off; return 200 "ok\n"; }
+}

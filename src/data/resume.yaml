@@ -1,0 +1,121 @@
+# Single source for the home page, /resume and resume.pdf.
+# Seeded from the LinkedIn export (2026-10-19). Fixes vs LinkedIn: Replicated "[X]" placeholder,
+# Amex availability figure, duplicated Amex associate bullets merged.
+
+name: Joe Martinez
+title: Platform Engineer
+tagline: Kubernetes, GitOps and observability for ML platforms
+location: Fort Lauderdale, FL
+email: joemmartinez2001@gmail.com
+links:
+  github: https://github.com/0xJMart
+  linkedin: https://www.linkedin.com/in/joe-martinez2001/
+
+summary: >-
+  Platform engineer who runs Kubernetes where it's hardest: customer clouds, air-gapped networks
+  and DoD-accredited environments. At Arize AI I build the operator, Terraform and observability
+  that ship our ML observability platform into 50+ enterprise environments. At home I run a GitOps
+  Raspberry Pi cluster that I'm turning into a small ML platform. I'm moving toward ML
+  infrastructure: GPU scheduling, model serving and LLM operations.
+
+experience:
+  - company: Arize AI
+    role: DevOps Engineer
+    start: 2025-12
+    end: present
+    bullets:
+      - Extended the Arize AX Kubernetes operator in Go and Python with reconciliation logic and health gating, removing manual steps from upgrades and cutting deployment-related incidents by 20%.
+      - Authored the Terraform modules and Kustomize overlays used for every production install across AWS, Azure and GKE, including air-gapped and on-prem environments.
+      - Built deployment validation and health monitoring on Prometheus, Grafana and OpenTelemetry, giving 50+ customer environments one signal set for install verification and triage.
+      - Designed the self-service install path (golden paths, preflight checks, CI/CD guidance), raising first-attempt success and cutting repeat escalations by 30%.
+      - Owned Kubernetes reliability across networking, storage and ingress; turned recurring failure modes into automated readiness checks.
+  - company: Replicated
+    role: Customer Reliability Engineer
+    start: 2025-04
+    end: 2025-12
+    bullets:
+      - Integrated LLM-backed tooling into incident response to pull context from logs and support bundles, reducing mean time to root cause by 20%.
+      - Built reference platform implementations covering Helm configuration, CI/CD pipeline templates and the Replicated release system.
+      - Debugged install and runtime failures on EKS, GKE, AKS, k3s and embedded clusters across CNI, storage class and admission-control layers.
+      - Wrote the documentation and onboarding path enterprise teams use to ship Replicated-packaged Kubernetes apps.
+  - company: Second Front Systems
+    role: Customer Support Engineer
+    start: 2024-08
+    end: 2025-04
+    bullets:
+      - Provisioned AWS infrastructure with Pulumi and authored Helm charts reproducing customer environments across DoD impact levels.
+      - Operated GitOps delivery with Argo CD and Flux, plus GitLab CI pipelines onboarding container images into accredited environments.
+      - Ran Istio, Kyverno and MinIO in-cluster alongside stateful services (Kafka, RabbitMQ, PostgreSQL, OpenSearch, Prometheus, Grafana).
+      - Wrote Python tooling that automated client onboarding, cutting manual setup time by 25%.
+  - company: Ionic
+    role: DevOps Support Engineer
+    start: 2023-09
+    end: 2024-05
+    bullets:
+      - Built and debugged mobile CI/CD pipelines on GitHub Actions, Azure DevOps and AWS S3, including iOS and Android signing.
+      - Ran CI/CD onboarding and pipeline reviews for enterprise Appflow customers; surfaced failure trends that shaped platform reliability work.
+  - company: American Express
+    role: Engineer III
+    start: 2021-01
+    end: 2023-09
+    note: Intern → Technology Associate → Engineer III
+    bullets:
+      - Kept secure file transfer infrastructure moving 500+ TB a day at 99.998% availability, monitored with Splunk, Prometheus and Grafana.
+      - Wrote Bash automation that pulls Unix health-check reports during incidents, cutting downtime by 30–40 minutes, and Python tooling that saved an hour per annual user audit.
+      - Led the annual certificate rotation and disaster-recovery exercises for partner file transfers.
+
+skills:
+  Kubernetes & GitOps: [Kubernetes, Operators (Go), Helm, Kustomize, Flux, Argo CD, Istio, Kyverno]
+  Cloud & IaC: [AWS, Azure, GCP, Terraform, Pulumi, Air-gapped installs]
+  Observability: [Prometheus, Grafana, OpenTelemetry, Alertmanager, Splunk]
+  CI/CD: [GitHub Actions, GitLab CI, Azure DevOps]
+  Data & messaging: [PostgreSQL (CNPG), Kafka, RabbitMQ, OpenSearch, MinIO]
+  Languages: [Go, Python, Bash, JavaScript]
+  ML platform (learning): [LLM tooling, Arize Phoenix, MLflow, vLLM]
+
+certifications:
+  - name: Certified Kubernetes Administrator (CKA)
+    issuer: The Linux Foundation
+    issued: 2025-01
+    expires: 2027-01
+  - name: CompTIA Security+
+    issuer: CompTIA
+    issued: 2025-01
+    expires: 2028-01
+  - name: HashiCorp Terraform Associate (003)
+    issuer: HashiCorp
+    issued: 2024-05
+    expires: 2026-05
+  - name: Kubernetes and Cloud Native Associate (KCNA)
+    issuer: The Linux Foundation
+    issued: 2024-05
+    expires: 2026-05
+  - name: AWS Solutions Architect – Associate
+    issuer: Amazon Web Services
+    issued: 2023-03
+    expires: 2026-03
+  - name: AWS Cloud Practitioner
+    issuer: Amazon Web Services
+    issued: 2023-02
+    expires: 2026-02
+
+education:
+  - school: Florida International University
+    degree: B.S. Information Technology
+    years: 2019–2021
+  - school: Miami Dade College
+    degree: A.A.
+    years: 2016–2019
+
+projects:
+  - name: Homelab platform
+    blurb: Four Raspberry Pi 5s running k0s, managed entirely by Flux. Keycloak SSO, Sealed Secrets, CloudNativePG, kube-prometheus-stack, cert-manager, MetalLB and Traefik, backed by an Unraid NAS. This site is served from it.
+    tags: [k0s, Flux, Prometheus, Keycloak]
+  - name: rack-display
+    blurb: An animated face on the rack's 2U touchscreen whose expression follows cluster health from Prometheus and Alertmanager. Runs as a kiosk pod, ships its own exporters and an iPhone widget.
+    tags: [Prometheus, Kiosk pod, Exporters]
+    link: https://github.com/0xJMart/rack-display
+  - name: ML platform on the homelab
+    blurb: "MLflow, Argo Workflows and object storage on the cluster, then a GPU node for vLLM serving and an LLM ops assistant traced with Arize Phoenix."
+    tags: [MLflow, Argo, vLLM, Phoenix]
+    status: in progress

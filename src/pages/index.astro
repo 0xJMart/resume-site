@@ -1,0 +1,129 @@
+---
+import Base from '../layouts/Base.astro';
+import RackScene from '../scene/RackScene';
+import { resume, fmtMonth, certStatus } from '../data/resume';
+
+const certs = resume.certifications.map((c) => ({ ...c, ...certStatus(c) }))
+  .sort((a, b) => Number(b.active) - Number(a.active) || String(b.issued).localeCompare(String(a.issued)));
+---
+<Base>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="nav">
+    <div class="wrap">
+      <a class="brand" href="/">joe-martinez</a>
+      <nav class="links" aria-label="Sections">
+        <a href="#lab">Lab</a>
+        <a href="#experience">Experience</a>
+        <a href="#projects">Projects</a>
+        <a href="#skills">Skills</a>
+      </nav>
+      <a class="btn" href="/resume.pdf">Resume PDF</a>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="hero">
+      <div class="wrap">
+        <p class="eyebrow">{resume.location}</p>
+        <h1>{resume.name}</h1>
+        <p class="role"><strong>{resume.title}</strong> · {resume.tagline}</p>
+        <p class="pitch">{resume.summary}</p>
+        <div class="cta">
+          <a class="btn primary" href={`mailto:${resume.email}`}>Email me</a>
+          <a class="btn" href="/resume.pdf">Download resume</a>
+          <a class="btn" href={resume.links.linkedin} rel="me">LinkedIn</a>
+          <a class="btn" href={resume.links.github} rel="me">GitHub</a>
+        </div>
+      </div>
+    </section>
+
+    <section id="lab" aria-labelledby="lab-h">
+      <div class="wrap">
+        <p class="eyebrow">The homelab, live</p>
+        <h2 id="lab-h">This page is served from this rack</h2>
+        <p class="muted" style="max-width:70ch">
+          Four Raspberry Pi 5s running Kubernetes (k0s), deployed entirely through Flux GitOps, with an Unraid NAS for storage.
+          The lights and the face on the screen follow the real cluster: node health, CPU and what the rack's own status display is showing right now.
+        </p>
+        <RackScene client:visible />
+      </div>
+    </section>
+
+    <section id="experience" aria-labelledby="exp-h">
+      <div class="wrap">
+        <p class="eyebrow">Experience</p>
+        <h2 id="exp-h">Where I've worked</h2>
+        <div class="jobs">
+          {resume.experience.map((j) => (
+            <article class="job">
+              <div class="when">{fmtMonth(j.start)} – {fmtMonth(j.end)}</div>
+              <div>
+                <h3>{j.role} · <span class="co">{j.company}</span></h3>
+                {j.note && <p class="note">{j.note}</p>}
+                <ul>{j.bullets.map((b) => <li>{b}</li>)}</ul>
+              </div>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <section id="projects" aria-labelledby="proj-h">
+      <div class="wrap">
+        <p class="eyebrow">Projects</p>
+        <h2 id="proj-h">What I build after hours</h2>
+        <div class="grid">
+          {resume.projects.map((p) => (
+            <article class="card">
+              <h3>
+                {p.link ? <a href={p.link}>{p.name}</a> : p.name}
+                {p.status && <span class="pill">{p.status}</span>}
+              </h3>
+              <p>{p.blurb}</p>
+              <ul class="tags">{p.tags.map((t) => <li>{t}</li>)}</ul>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <section id="skills" aria-labelledby="skills-h">
+      <div class="wrap">
+        <p class="eyebrow">Skills</p>
+        <h2 id="skills-h">Toolbox</h2>
+        <div class="skills">
+          {Object.entries(resume.skills).map(([group, items]) => (
+            <div>
+              <h3>{group}</h3>
+              <ul class="tags">{items.map((s) => <li>{s}</li>)}</ul>
+            </div>
+          ))}
+        </div>
+
+        <h2 style="margin-top:48px">Certifications</h2>
+        <ul class="certs">
+          {certs.map((c) => (
+            <li class={c.active ? 'active' : ''}>
+              <span class="n">{c.name}</span>
+              <span class="m">{c.issuer} · {c.label}</span>
+            </li>
+          ))}
+        </ul>
+
+        <h2 style="margin-top:48px">Education</h2>
+        <ul class="certs">
+          {resume.education.map((e) => (
+            <li><span class="n">{e.degree}</span><span class="m">{e.school} · {e.years}</span></li>
+          ))}
+        </ul>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <span>© {new Date().getFullYear()} {resume.name}</span>
+      <span>Built with Astro + three.js, deployed by Flux to a Raspberry Pi cluster. <a href="https://github.com/0xJMart/resume-site">Source</a></span>
+    </div>
+  </footer>
+</Base>

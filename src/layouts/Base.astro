@@ -1,0 +1,40 @@
+---
+import '../styles/global.css';
+import { resume } from '../data/resume';
+
+interface Props { title?: string; description?: string }
+const { title = `${resume.name} · ${resume.title}`, description = resume.summary } = Astro.props;
+const canonical = new URL(Astro.url.pathname, Astro.site);
+const og = new URL('/og.png', Astro.site);
+const person = {
+  '@context': 'https://schema.org',
+  '@type': 'Person',
+  name: resume.name,
+  jobTitle: resume.title,
+  url: Astro.site?.toString(),
+  sameAs: [resume.links.github, resume.links.linkedin],
+  address: { '@type': 'PostalAddress', addressLocality: 'Fort Lauderdale', addressRegion: 'FL', addressCountry: 'US' },
+};
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta property="og:type" content="profile" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={og} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="theme-color" content="#0b0d10" />
+    <script type="application/ld+json" set:html={JSON.stringify(person)} />
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>

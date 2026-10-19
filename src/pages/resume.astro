@@ -1,0 +1,72 @@
+---
+// Print-styled, ATS-friendly resume. CI prints this page to /resume.pdf.
+import { resume, fmtMonth, certStatus } from '../data/resume';
+const certs = resume.certifications.filter((c) => certStatus(c).active);
+const earned = resume.certifications.filter((c) => !certStatus(c).active);
+const site = Astro.site?.host;
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{resume.name} · Resume</title>
+    <meta name="robots" content="noindex" />
+    <style>
+      @page { size: Letter; margin: 0.55in 0.6in; }
+      body { font: 10.5pt/1.4 'Helvetica Neue', Arial, sans-serif; color: #111; background: #fff; max-width: 8.5in; margin: 0 auto; padding: 24px; }
+      @media print { body { padding: 0; } }
+      h1 { font-size: 22pt; margin: 0; letter-spacing: -.01em; }
+      .sub { margin: 2px 0 6px; font-size: 11pt; color: #333; }
+      .contact { font-size: 9.5pt; color: #333; margin-bottom: 10px; }
+      .contact a { color: #0a5f7a; text-decoration: none; }
+      h2 { font-size: 10.5pt; text-transform: uppercase; letter-spacing: .1em; color: #0a5f7a; border-bottom: 1px solid #ccd; padding-bottom: 2px; margin: 14px 0 6px; }
+      .job { break-inside: avoid; margin-bottom: 8px; }
+      .row { display: flex; justify-content: space-between; gap: 12px; }
+      .row strong { font-size: 10.5pt; }
+      .dates { color: #444; white-space: nowrap; font-size: 9.5pt; }
+      ul { margin: 3px 0 0; padding-left: 16px; }
+      li { margin: 1px 0; }
+      p { margin: 0; }
+      .skills p { margin: 2px 0; }
+    </style>
+  </head>
+  <body>
+    <h1>{resume.name}</h1>
+    <p class="sub">{resume.title} · {resume.tagline}</p>
+    <p class="contact">
+      {resume.location} · <a href={`mailto:${resume.email}`}>{resume.email}</a> ·
+      <a href={resume.links.linkedin}>linkedin.com/in/joe-martinez2001</a> ·
+      <a href={resume.links.github}>github.com/0xJMart</a> · <a href={Astro.site?.toString()}>{site}</a>
+    </p>
+    <p>{resume.summary}</p>
+
+    <h2>Experience</h2>
+    {resume.experience.map((j) => (
+      <div class="job">
+        <div class="row"><span><strong>{j.role}</strong>, {j.company}</span><span class="dates">{fmtMonth(j.start)} – {fmtMonth(j.end)}</span></div>
+        {j.note && <p style="font-size:9.5pt;color:#444">{j.note}</p>}
+        <ul>{j.bullets.map((b) => <li>{b}</li>)}</ul>
+      </div>
+    ))}
+
+    <h2>Projects</h2>
+    {resume.projects.map((p) => (
+      <div class="job"><strong>{p.name}</strong>{p.status && ` (${p.status})`}: {p.blurb}</div>
+    ))}
+
+    <h2>Skills</h2>
+    <div class="skills">
+      {Object.entries(resume.skills).map(([g, items]) => <p><strong>{g}:</strong> {items.join(', ')}</p>)}
+    </div>
+
+    <h2>Certifications</h2>
+    <p>{certs.map((c) => `${c.name} (${c.issuer}, valid to ${fmtMonth(c.expires!)})`).join(' · ')}</p>
+    {earned.length > 0 && <p style="margin-top:2px">Previously earned: {earned.map((c) => `${c.name} (${String(c.issued).slice(0, 4)})`).join(' · ')}</p>}
+
+    <h2>Education</h2>
+    {resume.education.map((e) => (
+      <div class="row"><span><strong>{e.degree}</strong>, {e.school}</span><span class="dates">{e.years}</span></div>
+    ))}
+  </body>
+</html>
