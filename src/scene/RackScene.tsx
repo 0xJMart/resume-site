@@ -151,6 +151,13 @@ function Frame() {
           {silver}
         </mesh>
       ))}
+      {/* black-tinted glass side panels, set inside the posts and rails */}
+      {[-1, 1].map((x) => (
+        <mesh key={x} position={[x * px, (top - 0.32 + bottom + 0.2) / 2, 0]} rotation={[0, Math.PI / 2, 0]} raycast={noRaycast} renderOrder={1}>
+          <planeGeometry args={[2 * pz - 0.16, top - 0.32 - (bottom + 0.2)]} />
+          <meshPhysicalMaterial color="#05070a" transparent opacity={0.72} roughness={0.08} metalness={0.1} clearcoat={1} clearcoatRoughness={0.05} side={THREE.DoubleSide} depthWrite={false} />
+        </mesh>
+      ))}
     </group>
   );
 }
