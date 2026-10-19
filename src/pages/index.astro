@@ -5,125 +5,103 @@ import { resume, fmtMonth, certStatus } from '../data/resume';
 
 const certs = resume.certifications.map((c) => ({ ...c, ...certStatus(c) }))
   .sort((a, b) => Number(b.active) - Number(a.active) || String(b.issued).localeCompare(String(a.issued)));
+const year = (ym: string) => (ym === 'present' ? 'now' : String(ym).slice(0, 4));
 ---
 <Base>
-  <a class="skip" href="#main">Skip to content</a>
-  <header class="nav">
-    <div class="wrap">
-      <a class="brand" href="/">joe-martinez</a>
-      <nav class="links" aria-label="Sections">
-        <a href="#lab">Lab</a>
-        <a href="#experience">Experience</a>
-        <a href="#projects">Projects</a>
-        <a href="#skills">Skills</a>
-      </nav>
-      <a class="btn" href="/resume.pdf">Resume PDF</a>
+  <a class="skip" href="#main">Skip to the resume</a>
+  <div class="page">
+    <div class="stage-col">
+      <RackScene client:only="react" />
     </div>
-  </header>
 
-  <main id="main">
-    <section class="hero">
-      <div class="wrap">
-        <p class="eyebrow">{resume.location}</p>
-        <h1>{resume.name}</h1>
-        <p class="role"><strong>{resume.title}</strong> · {resume.tagline}</p>
+    <main id="main" class="content">
+      <section class="unit" data-rack="screen" aria-labelledby="name">
+        <div class="head"><span class="u">U1–U2, the display</span></div>
+        <h1 class="name" id="name">{resume.name}</h1>
+        <p class="role">{resume.title}, {resume.location}</p>
         <p class="pitch">{resume.summary}</p>
-        <div class="cta">
+        <div class="links">
           <a class="btn primary" href={`mailto:${resume.email}`}>Email me</a>
-          <a class="btn" href="/resume.pdf">Download resume</a>
+          <a class="btn" href="/resume.pdf">Resume (PDF)</a>
           <a class="btn" href={resume.links.linkedin} rel="me">LinkedIn</a>
           <a class="btn" href={resume.links.github} rel="me">GitHub</a>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <section id="lab" aria-labelledby="lab-h">
-      <div class="wrap">
-        <p class="eyebrow">The homelab, live</p>
-        <h2 id="lab-h">This page is served from this rack</h2>
-        <p class="muted" style="max-width:70ch">
-          Four Raspberry Pi 5s running Kubernetes (k0s), deployed entirely through Flux GitOps, with an Unraid NAS for storage.
-          The lights and the face on the screen follow the real cluster: node health, CPU and what the rack's own status display is showing right now.
-        </p>
-        <RackScene client:visible />
-      </div>
-    </section>
-
-    <section id="experience" aria-labelledby="exp-h">
-      <div class="wrap">
-        <p class="eyebrow">Experience</p>
-        <h2 id="exp-h">Where I've worked</h2>
-        <div class="jobs">
-          {resume.experience.map((j) => (
-            <article class="job">
-              <div class="when">{fmtMonth(j.start)} – {fmtMonth(j.end)}</div>
-              <div>
-                <h3>{j.role} · <span class="co">{j.company}</span></h3>
-                {j.note && <p class="note">{j.note}</p>}
-                <ul>{j.bullets.map((b) => <li>{b}</li>)}</ul>
-              </div>
-            </article>
-          ))}
+      <section class="unit" data-rack="switch" aria-labelledby="exp-h">
+        <div class="head">
+          <span class="u">U3, the switch</span>
+          <h2 id="exp-h">Experience</h2>
         </div>
-      </div>
-    </section>
-
-    <section id="projects" aria-labelledby="proj-h">
-      <div class="wrap">
-        <p class="eyebrow">Projects</p>
-        <h2 id="proj-h">What I build after hours</h2>
-        <div class="grid">
-          {resume.projects.map((p) => (
-            <article class="card">
-              <h3>
-                {p.link ? <a href={p.link}>{p.name}</a> : p.name}
-                {p.status && <span class="pill">{p.status}</span>}
-              </h3>
-              <p>{p.blurb}</p>
-              <ul class="tags">{p.tags.map((t) => <li>{t}</li>)}</ul>
-            </article>
-          ))}
-        </div>
-      </div>
-    </section>
-
-    <section id="skills" aria-labelledby="skills-h">
-      <div class="wrap">
-        <p class="eyebrow">Skills</p>
-        <h2 id="skills-h">Toolbox</h2>
-        <div class="skills">
-          {Object.entries(resume.skills).map(([group, items]) => (
+        {resume.experience.map((j) => (
+          <article class="job">
+            <div class="when">{year(j.start)}–{year(j.end)}</div>
             <div>
-              <h3>{group}</h3>
-              <ul class="tags">{items.map((s) => <li>{s}</li>)}</ul>
+              <h3>{j.company}</h3>
+              <p class="title">{j.role}{j.note && `, ${j.note.toLowerCase().replace('intern', 'from intern')}`}</p>
+              <ul>{j.bullets.map((b) => <li>{b}</li>)}</ul>
             </div>
-          ))}
+          </article>
+        ))}
+      </section>
+
+      <section class="unit" data-rack="pis" aria-labelledby="proj-h">
+        <div class="head">
+          <span class="u">U4–U5, four Raspberry Pi 5s</span>
+          <h2 id="proj-h">Projects</h2>
         </div>
+        {resume.projects.map((p) => (
+          <article class="project">
+            <h3>
+              {p.link ? <a href={p.link}>{p.name}</a> : p.name}
+              {p.status && <span class="status">{p.status}</span>}
+            </h3>
+            <p>{p.blurb}</p>
+            <p class="built">Built with {p.tags.slice(0, -1).join(', ')} and {p.tags.at(-1)}.</p>
+          </article>
+        ))}
+      </section>
 
-        <h2 style="margin-top:48px">Certifications</h2>
-        <ul class="certs">
-          {certs.map((c) => (
-            <li class={c.active ? 'active' : ''}>
-              <span class="n">{c.name}</span>
-              <span class="m">{c.issuer} · {c.label}</span>
-            </li>
+      <section class="unit" data-rack="blank" aria-labelledby="skills-h">
+        <div class="head">
+          <span class="u">U6–U8, room to grow</span>
+          <h2 id="skills-h">Skills and certifications</h2>
+        </div>
+        <dl class="skills">
+          {Object.entries(resume.skills).map(([group, items]) => (
+            <>
+              <dt>{group}</dt>
+              <dd>{items.join(', ')}</dd>
+            </>
           ))}
+        </dl>
+
+        <h3 class="sub">Certifications</h3>
+        <table class="certs">
+          <tbody>
+            {certs.map((c) => (
+              <tr>
+                <td>{c.name}<br /><span class="state">{c.issuer}</span></td>
+                <td class={`state ${c.active ? 'valid' : ''}`}>{c.label}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        <h3 class="sub">Education</h3>
+        <ul class="edu">
+          {resume.education.map((e) => <li>{e.degree}, {e.school}, {e.years}</li>)}
         </ul>
 
-        <h2 style="margin-top:48px">Education</h2>
-        <ul class="certs">
-          {resume.education.map((e) => (
-            <li><span class="n">{e.degree}</span><span class="m">{e.school} · {e.years}</span></li>
-          ))}
-        </ul>
-      </div>
-    </section>
-  </main>
-
-  <footer>
-    <div class="wrap">
-      <span>© {new Date().getFullYear()} {resume.name}</span>
-      <span>Built with Astro + three.js, deployed by Flux to a Raspberry Pi cluster. <a href="https://github.com/0xJMart/resume-site">Source</a></span>
-    </div>
-  </footer>
+        <div class="links" style="margin-top:48px">
+          <a class="btn primary" href={`mailto:${resume.email}`}>Email me</a>
+          <a class="btn" href="/resume.pdf">Resume (PDF)</a>
+        </div>
+        <p class="foot">
+          This site runs on the rack beside it: four Raspberry Pis running Kubernetes, deployed with Flux.
+          The lights and the face on the screen show the cluster live. <a href="https://github.com/0xJMart/resume-site">Source on GitHub</a>.
+        </p>
+      </section>
+    </main>
+  </div>
 </Base>

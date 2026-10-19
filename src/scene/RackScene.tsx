@@ -98,7 +98,7 @@ function Hoverable({ item, selected, onSelect, children, size, position }: {
         <mesh position={[0, 0, 0.15]} raycast={noRaycast}>
           <boxGeometry args={[size[0] + 0.06, size[1] + 0.02, size[2] + 0.3]} />
           <meshBasicMaterial transparent opacity={0} depthWrite={false} />
-          <Edges color={selected ? C.accent : '#ffffff'} lineWidth={selected ? 2 : 1} raycast={noRaycast} />
+          <Edges color={selected ? '#1F6B3A' : '#545B63'} lineWidth={selected ? 2 : 1} raycast={noRaycast} />
         </mesh>
       )}
     </group>
@@ -482,10 +482,20 @@ function Cables({ o }: { o: number }) {
   );
 }
 
-function NasTower({ selected, onSelect }: { selected: boolean; onSelect: (i: Selectable) => void }) {
+// The NAS is only discussed in the last section, so it waits off to the side and slides in there
+function NasTower({ show, onSelect }: { show: boolean; onSelect: (i: Selectable) => void }) {
   const size: [number, number, number] = [1.6, 3.2, 2.8];
+  const ref = useRef<THREE.Group>(null);
+  useFrame((_, dt) => {
+    const g = ref.current;
+    if (!g) return;
+    const x = show ? 3.1 : 9;
+    g.position.x += (x - g.position.x) * (1 - Math.exp(-dt * 4));
+    g.visible = g.position.x < 8.5;
+  });
   return (
-    <Hoverable item={NAS} selected={selected} onSelect={onSelect} size={size} position={[3.1, FLOOR + size[1] / 2, -0.6]}>
+    <group ref={ref} position={[9, 0, 0]}>
+    <Hoverable item={NAS} selected={false} onSelect={onSelect} size={size} position={[0, FLOOR + size[1] / 2, -0.6]}>
       <RoundedBox args={size} radius={0.06} castShadow receiveShadow>
         <meshStandardMaterial color="#202429" metalness={0.3} roughness={0.55} />
       </RoundedBox>
@@ -499,48 +509,68 @@ function NasTower({ selected, onSelect }: { selected: boolean; onSelect: (i: Sel
         </group>
       ))}
     </Hoverable>
+    </group>
   );
 }
 
 /* ------------------------------ camera --------------------------------- */
 
-function Rig({ focus, controls }: { focus: THREE.Vector3; controls: React.RefObject<OrbitControlsImpl | null> }) {
-  useFrame((_, dt) => {
+// One framing per page section. The page marks sections with data-rack="<id>"; whichever crosses
+// the middle of the viewport is active, and the camera eases to its shot.
+type ShotId = 'screen' | 'switch' | 'pis' | 'blank';
+const SHOTS: Record<ShotId, { target: THREE.Vector3Tuple; offset: THREE.Vector3Tuple }> = {
+  screen: { target: [0.1, -0.2, 0.3], offset: [2.4, 1.3, 9.6] },
+  switch: { target: [0, uY(3, 1) - 0.35, 0.5], offset: [1.8, 1.5, 6.4] },
+  pis: { target: [0, uY(4, 2) - 0.1, 0.9], offset: [-2.0, 0.9, 6.2] },
+  blank: { target: [1.55, -0.5, 0], offset: [3.0, 2.4, 12] },
+};
+const isShot = (id: string | null): id is ShotId => !!id && id in SHOTS;
+
+function Rig({ shot, controls, reduced }: { shot: ShotId; controls: React.RefObject<OrbitControlsImpl | null>; reduced: boolean }) {
+  const { camera, size } = useThree();
+  const driving = useRef(true);
+  useEffect(() => { driving.current = true; }, [shot, size.width, size.height]);
+  useEffect(() => {
     const c = controls.current;
     if (!c) return;
-    c.target.lerp(focus, 1 - Math.exp(-dt * 4));
+    const stop = () => { driving.current = false; };
+    c.addEventListener('start', stop);
+    return () => c.removeEventListener('start', stop);
+  }, [controls]);
+  useFrame((_, dt) => {
+    const c = controls.current;
+    if (!c || !driving.current) return;
+    // pull back on tall or narrow stages so the framed part still fits
+    const k = Math.min(1.6, Math.max(1, 0.9 / (size.width / size.height)));
+    const s = SHOTS[shot];
+    const target = new THREE.Vector3(...s.target);
+    const pos = target.clone().add(new THREE.Vector3(...s.offset).multiplyScalar(k));
+    const t = reduced ? 1 : 1 - Math.exp(-dt * 3);
+    c.target.lerp(target, t);
+    camera.position.lerp(pos, t);
     c.update();
+    if (camera.position.distanceTo(pos) < 0.01) driving.current = false;
   });
-  return null;
-}
-
-// Pull the camera back on narrow (portrait) viewports so the rack and NAS both fit
-function AutoFrame() {
-  const { camera, size } = useThree();
-  useEffect(() => {
-    const aspect = size.width / size.height;
-    camera.position.setLength(8.6 * Math.max(1, 1.35 / aspect));
-  }, [camera, size.width, size.height]);
   return null;
 }
 
 /* ------------------------------ scene ---------------------------------- */
 
-function Rack({ feed, explode, selected, onSelect }: {
-  feed: Feed; explode: boolean; selected: Selectable | null; onSelect: (i: Selectable) => void;
+function Rack({ feed, explode, active, onSelect }: {
+  feed: Feed; explode: boolean; active: string | null; onSelect: (i: Selectable) => void;
 }) {
   const nodes = feed.status?.nodes ?? null;
   const offline = feed.mode === 'offline' || !!feed.status?.stale;
   const items = RACK.filter((r) => !r.future);
   const o = useSlide(explode);
   return (
-    <group position={[-0.8, 0, 0]}>
+    <group>
       <Frame />
       {items.map((it) => {
         const y = uY(it.u, it.h);
         const size: [number, number, number] = [WIDTH, it.h * U, DEPTH];
         return (
-          <Hoverable key={it.id} item={it} selected={selected?.id === it.id} onSelect={onSelect} size={size} position={[0, y, 0]}>
+          <Hoverable key={it.id} item={it} selected={active === it.id} onSelect={onSelect} size={size} position={[0, y, 0]}>
             {it.kind === 'switch' && <Switch nodes={nodes} offline={offline} />}
             {it.kind === 'pis' && <Pis o={o} nodes={nodes} offline={offline} />}
             {it.kind === 'screen' && <Screen feed={feed} />}
@@ -549,16 +579,9 @@ function Rack({ feed, explode, selected, onSelect }: {
         );
       })}
       <Cables o={o} />
-      <NasTower selected={selected?.id === NAS.id} onSelect={onSelect} />
+      <NasTower show={active === 'blank'} onSelect={onSelect} />
     </group>
   );
-}
-
-function focusFor(item: Selectable | null): THREE.Vector3 {
-  if (!item) return new THREE.Vector3(0.3, 0.1, 0);
-  if (item.id === NAS.id) return new THREE.Vector3(2.2, -0.4, 0);
-  const r = item as RackItem;
-  return new THREE.Vector3(-0.8, uY(r.u, r.h), 0.6);
 }
 
 function webglOk() {
@@ -568,129 +591,97 @@ function webglOk() {
   } catch { return false; }
 }
 
+function readout(feed: Feed): string {
+  const s = feed.status;
+  if (feed.mode === 'offline' || !s) return 'Live data is unavailable right now, so this is the model on its own.';
+  if (s.stale) return "The rack isn't reporting. Showing the last state it sent.";
+  const up = s.nodes.filter((n) => n.ready).length;
+  const state = s.label === 'all good' ? 'All good.' : `${s.label[0].toUpperCase()}${s.label.slice(1)}.`;
+  return `${feed.mode === 'mock' ? 'Demo data. ' : ''}${up} of ${s.nodes.length} nodes up. ${state}`;
+}
+
 export default function RackScene() {
   const feed = useFeed();
-  const [selected, setSelected] = useState<Selectable | null>(null);
-  const [explode, setExplode] = useState(false);
-  const [visible, setVisible] = useState(true);
+  const [active, setActive] = useState<string | null>('screen');
   const [gl, setGl] = useState<boolean | null>(null);
   const [reduced, setReduced] = useState(false);
-  const wrap = useRef<HTMLDivElement>(null);
   const controls = useRef<OrbitControlsImpl | null>(null);
 
   useEffect(() => {
     setGl(webglOk());
     setReduced(matchMedia('(prefers-reduced-motion: reduce)').matches);
-    const io = new IntersectionObserver(([e]) => setVisible(e.isIntersecting));
-    if (wrap.current) io.observe(wrap.current);
+    // the section crossing the middle of the viewport picks the shot
+    const io = new IntersectionObserver((entries) => {
+      for (const e of entries) if (e.isIntersecting) setActive((e.target as HTMLElement).dataset.rack ?? null);
+    }, { rootMargin: '-45% 0px -45% 0px' });
+    document.querySelectorAll<HTMLElement>('[data-rack]').forEach((el) => io.observe(el));
     return () => io.disconnect();
   }, []);
 
-  const focus = useMemo(() => focusFor(selected), [selected]);
-  const all: Selectable[] = [...RACK.filter((r) => !r.future), NAS];
-  const s = feed.status;
-  const up = s ? s.nodes.filter((n) => n.ready).length : 0;
+  // clicking a part scrolls to the section about it (the NAS is covered with the blanks)
+  const goTo = (item: Selectable) => {
+    const id = item.id === NAS.id ? 'blank' : item.id;
+    document.querySelector(`[data-rack="${id}"]`)?.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' });
+  };
 
-  const strip = feed.mode === 'offline'
-    ? 'live data unavailable · showing the model'
-    : s?.stale
-      ? 'rack is not reporting · last state shown'
-      : `${feed.mode === 'mock' ? 'demo data · ' : ''}${up}/${s?.nodes.length ?? 0} nodes up · ${s?.label ?? ''}`;
+  const shot: ShotId = isShot(active) ? active : 'screen';
+  const s = feed.status;
+  const live = feed.mode === 'live' && s && !s.stale;
 
   return (
-    <div className="rack" ref={wrap}>
-      <div className="rack-stage">
-        <p className={`rack-strip ${feed.mode}`} aria-live="polite">
-          <span className="dot" aria-hidden="true" />
-          {strip}
-        </p>
-        {gl === false ? (
-          <img className="rack-fallback" src="/rack-poster.png" alt="3D render of the homelab rack: a 10-inch rack with a UniFi switch, four Raspberry Pi 5 nodes and a status screen, next to an Unraid NAS" />
-        ) : gl ? (
-          <Canvas
-            shadows
-            dpr={[1, 1.5]}
-            frameloop={visible ? 'always' : 'never'}
-            camera={{ position: [2.6, 1.6, 8], fov: 38 }}
-            onPointerMissed={() => setSelected(null)}
-            aria-label="Interactive 3D model of the homelab rack"
-          >
-            <color attach="background" args={['#0d1014']} />
-            <ambientLight intensity={0.35} />
-            <directionalLight position={[4, 6, 5]} intensity={1.6} castShadow shadow-mapSize={[1024, 1024]} />
-            <Environment resolution={64}>
-              <Lightformer intensity={3} position={[0, 4, 4]} scale={[8, 2, 1]} />
-              <Lightformer intensity={1} position={[-5, 1, 0]} rotation-y={Math.PI / 2} scale={[6, 4, 1]} color="#8fb8ff" />
-              <Lightformer intensity={0.8} position={[5, 1, -2]} rotation-y={-Math.PI / 2} scale={[6, 4, 1]} color="#ffd9b0" />
-            </Environment>
-            <Rack feed={feed} explode={explode} selected={selected} onSelect={setSelected} />
-            <ContactShadows position={[-0.8, FLOOR, 0]} opacity={0.6} scale={12} blur={2.4} far={4} />
-            <OrbitControls
-              ref={controls}
-              enablePan={false}
-              minDistance={4}
-              maxDistance={16}
-              minPolarAngle={Math.PI * 0.2}
-              maxPolarAngle={Math.PI * 0.55}
-              minAzimuthAngle={-Math.PI * 0.45}
-              maxAzimuthAngle={Math.PI * 0.6}
-              autoRotate={!reduced && !selected}
-              autoRotateSpeed={0.4}
-              enableDamping
-            />
-            <Rig focus={focus} controls={controls} />
-            <AutoFrame />
-          </Canvas>
-        ) : null}
-        <div className="rack-tools">
-          <button type="button" onClick={() => setExplode((v) => !v)} aria-pressed={explode}>
-            {explode ? 'Slide Pis in' : 'Slide Pis out'}
-          </button>
-          {selected && <button type="button" onClick={() => setSelected(null)}>Reset view</button>}
-        </div>
-      </div>
+    <div className="stage">
+      {gl === false ? (
+        <img className="stage-fallback" src="/rack-poster.png" alt="The homelab rack: a 10-inch aluminium rack with a status screen, a UniFi switch, four Raspberry Pi 5 nodes and blank panels" />
+      ) : gl ? (
+        <Canvas
+          shadows
+          dpr={[1, 1.5]}
+          camera={{ position: [2.2, 1.4, 7.4], fov: 36 }}
+          aria-label="Interactive 3D model of the homelab rack. Drag to turn it; click a part to read about it."
+        >
+          <Environment resolution={64}>
+            <Lightformer intensity={3} position={[0, 4, 4]} scale={[8, 2, 1]} />
+            <Lightformer intensity={1} position={[-5, 1, 0]} rotation-y={Math.PI / 2} scale={[6, 4, 1]} color="#dfe8f2" />
+            <Lightformer intensity={0.8} position={[5, 1, -2]} rotation-y={-Math.PI / 2} scale={[6, 4, 1]} color="#f2ece2" />
+          </Environment>
+          <ambientLight intensity={0.5} />
+          <directionalLight position={[4, 6, 5]} intensity={1.5} castShadow shadow-mapSize={[1024, 1024]} />
+          <Rack feed={feed} explode={shot === 'pis'} active={active} onSelect={goTo} />
+          <ContactShadows position={[0, FLOOR, 0]} opacity={0.35} scale={14} blur={2.6} far={4} color="#2a3036" />
+          <OrbitControls
+            ref={controls}
+            enablePan={false}
+            enableZoom={false}
+            minPolarAngle={Math.PI * 0.2}
+            maxPolarAngle={Math.PI * 0.55}
+            minAzimuthAngle={-Math.PI * 0.5}
+            maxAzimuthAngle={Math.PI * 0.6}
+            enableDamping
+          />
+          <Rig shot={shot} controls={controls} reduced={reduced} />
+        </Canvas>
+      ) : null}
 
-      <aside className="rack-panel">
-        <ul className="rack-list" aria-label="Rack components">
-          {all.map((it) => (
-            <li key={it.id}>
-              <button type="button" aria-pressed={selected?.id === it.id} onClick={() => setSelected(selected?.id === it.id ? null : it)}>
-                {it.label}
-              </button>
-            </li>
-          ))}
-        </ul>
-        {selected ? (
-          <div className="rack-detail">
-            <h3>{selected.label}</h3>
-            <ul>{selected.specs.map((x) => <li key={x}>{x}</li>)}</ul>
-            {'runs' in selected && selected.runs && (
-              <>
-                <h4>Runs</h4>
-                <ul>{selected.runs.map((x) => <li key={x}>{x}</li>)}</ul>
-              </>
-            )}
-            {selected.id === 'pis' && s && (
-              <>
-                <h4>Right now</h4>
-                <table className="rack-nodes">
-                  <tbody>
-                    {s.nodes.map((n) => (
-                      <tr key={n.name}>
-                        <td><span className={`dot ${n.ready ? 'ok' : 'bad'}`} aria-hidden="true" />{n.name}</td>
-                        <td>{n.ready ? `${n.cpu}% CPU` : 'down'}</td>
-                        <td>{n.temp != null ? `${n.temp}°C` : '—'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </>
-            )}
-          </div>
-        ) : (
-          <p className="rack-hint">Drag to orbit. Click a part, or pick one from the list, to see what it does.</p>
+      <div className="readout" aria-live="polite">
+        <p><span className={`led ${live ? 'on' : 'off'}`} aria-hidden="true" />{readout(feed)}</p>
+        {shot === 'pis' && s && (
+          <table>
+            <caption className="sr-only">Live node stats</caption>
+            <tbody>
+              {NODES.map((n) => {
+                const ns = s.nodes.find((x) => x.name === n.name);
+                return (
+                  <tr key={n.name}>
+                    <th scope="row"><span className={`led ${ns?.ready ? 'on' : 'down'}`} aria-hidden="true" />{n.name}</th>
+                    <td>{ns?.ready ? `${ns.cpu}% CPU` : 'down'}</td>
+                    <td>{ns?.temp != null ? `${ns.temp} °C` : ''}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         )}
-      </aside>
+      </div>
     </div>
   );
 }

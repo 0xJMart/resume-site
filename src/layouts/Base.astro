@@ -1,9 +1,10 @@
 ---
+import '@fontsource-variable/archivo/wdth.css';
 import '../styles/global.css';
 import { resume } from '../data/resume';
 
 interface Props { title?: string; description?: string }
-const { title = `${resume.name} · ${resume.title}`, description = resume.summary } = Astro.props;
+const { title = `${resume.name}, ${resume.title}`, description = resume.summary } = Astro.props;
 const canonical = new URL(Astro.url.pathname, Astro.site);
 const og = new URL('/og.png', Astro.site);
 const person = {
@@ -31,7 +32,7 @@ const person = {
     <meta property="og:url" content={canonical} />
     <meta property="og:image" content={og} />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="theme-color" content="#0b0d10" />
+    <meta name="theme-color" content="#dadfe3" />
     <script type="application/ld+json" set:html={JSON.stringify(person)} />
   </head>
   <body>
