@@ -22,29 +22,29 @@ export interface Node {
 
 export const RACK_U = 8;
 
+// Left to right as mounted in the Pi panel; port = switch port it's cabled to
 export const NODES: Node[] = [
+  { name: 'node-3', role: 'worker · drives the rack screen', port: 1 },
   { name: 'control-node', role: 'k0s controller + worker', port: 2 },
   { name: 'node-1', role: 'worker', port: 5 },
   { name: 'node-2', role: 'worker', port: 7 },
-  { name: 'node-3', role: 'worker · drives the rack screen', port: 1 },
 ];
 
 export const RACK: RackItem[] = [
   {
-    id: 'switch', u: 2, h: 1, kind: 'switch', label: 'UniFi USW Ultra 210W',
-    specs: ['8 × 1 GbE, ports 1–7 PoE+', '210 W budget; powers all four Pis', 'Uplink to the UniFi gateway', 'Per-port PoE watts scraped by unpoller'],
+    id: 'screen', u: 1, h: 2, kind: 'screen', label: '7.84″ rack display',
+    specs: ['1280 × 400 touchscreen, 2U', 'Kiosk pod on node-3: cage + Chromium', 'Face reacts to Prometheus + Alertmanager', 'Swipe for per-node graphs'],
   },
   {
-    id: 'pis', u: 3, h: 2, kind: 'pis', label: '4 × Raspberry Pi 5 (k0s cluster)',
+    id: 'switch', u: 3, h: 1, kind: 'switch', label: 'UniFi USW Ultra 210W',
+    specs: ['7 × 1 GbE PoE+ out, 1 uplink', '210 W budget; powers all four Pis', 'Uplink to the UniFi gateway', 'Per-port PoE watts scraped by unpoller'],
+  },
+  {
+    id: 'pis', u: 4, h: 2, kind: 'pis', label: '4 × Raspberry Pi 5 (k0s cluster)',
     specs: ['Cortex-A76, 4 cores, 8 GB each', 'NVMe boot via M.2, PoE HATs', 'Debian 13, k0s v1.34', 'Flux GitOps from a single repo'],
     runs: ['Traefik + MetalLB ingress', 'Keycloak SSO, oauth2-proxy', 'CloudNativePG Postgres', 'kube-prometheus-stack + exporters', 'Sealed Secrets, cert-manager', 'Media, file sync, password manager', 'This website'],
   },
-  {
-    id: 'screen', u: 5, h: 2, kind: 'screen', label: '7.84″ rack display',
-    specs: ['1280 × 400 touchscreen, 2U', 'Kiosk pod on node-3: cage + Chromium', 'Face reacts to Prometheus + Alertmanager', 'Swipe for per-node graphs'],
-  },
-  { id: 'blank', u: 7, h: 2, kind: 'blank', label: 'Blank panels', specs: ['Room for the UPS and PDU'] },
-  { id: 'pdu', u: 7, h: 1, kind: 'pdu', label: '10″ PDU with USB (planned)', specs: ['One cord to the UPS', 'USB powers the display'], future: true },
+  { id: 'blank', u: 6, h: 3, kind: 'blank', label: '3 × 1U blank panels', specs: ['Room for a PDU and whatever comes next'] },
 ];
 
 export const NAS = {

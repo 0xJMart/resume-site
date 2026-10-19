@@ -7,19 +7,21 @@ import { Face } from './face';
 import { NAS, NODES, RACK, RACK_U, type RackItem } from './rack';
 import { fetchStatus, mockStatus, type Feed, type NodeStatus } from './status';
 
-// Scene units: 1 = 10 cm. A rack unit is 44.45 mm.
+// Scene units: 1 = 10 cm. A rack unit is 44.45 mm. y = 0 is the middle of the 8U mounting space.
 const U = 0.4445;
 const WIDTH = 2.54;
 const DEPTH = 2.2;
-const TOP = (RACK_U * U) / 2 + 0.3;
-const uY = (u: number, h: number) => TOP - 0.06 - (u - 1 + h / 2) * U;
+const FRONT = DEPTH / 2;
+const TOP = (RACK_U * U) / 2;
+const FLOOR = -TOP - 0.32;
+const uY = (u: number, h: number) => TOP - (u - 1 + h / 2) * U;
 
 const C = {
-  frame: '#1d2126',
-  panel: '#2a2f36',
+  silver: '#d9dde1',
+  panel: '#17191c',
   pcb: '#1f6b3a',
   steel: '#b9c0c8',
-  unifi: '#e9ebee',
+  unifi: '#eef0f2',
   ok: '#3ee07a',
   bad: '#ff4d6d',
   warn: '#ffb547',
@@ -73,8 +75,8 @@ function Hoverable({ item, selected, onSelect, children, size, position }: {
       onClick={(e) => { e.stopPropagation(); onSelect(item); }}>
       {children}
       {(hover || selected) && (
-        <mesh>
-          <boxGeometry args={[size[0] + 0.06, size[1] + 0.06, size[2] + 0.06]} />
+        <mesh position={[0, 0, 0.15]}>
+          <boxGeometry args={[size[0] + 0.06, size[1] + 0.02, size[2] + 0.3]} />
           <meshBasicMaterial transparent opacity={0} depthWrite={false} />
           <Edges color={selected ? C.accent : '#ffffff'} lineWidth={selected ? 2 : 1} />
         </mesh>
@@ -83,160 +85,248 @@ function Hoverable({ item, selected, onSelect, children, size, position }: {
   );
 }
 
+const silver = <meshStandardMaterial color={C.silver} metalness={0.45} roughness={0.38} />;
+
+function Bar({ size, position }: { size: [number, number, number]; position: [number, number, number] }) {
+  return (
+    <mesh position={position} castShadow receiveShadow>
+      <boxGeometry args={size} />
+      {silver}
+    </mesh>
+  );
+}
+
+// DeskPi RackMate-style frame: brushed aluminium posts and rails, carry handles on top, small feet
 function Frame() {
-  const h = RACK_U * U + 0.24;
-  const posts: [number, number][] = [[-1, -1], [1, -1], [-1, 1], [1, 1]];
+  const px = WIDTH / 2 + 0.04, pz = DEPTH / 2 - 0.08;
+  const bottom = FLOOR + 0.1, top = TOP + 0.34;
+  const handles = useMemo(() => [-1, 1].map((s) => new THREE.CatmullRomCurve3([
+    new THREE.Vector3(s * (px - 0.06), top, pz - 0.05),
+    new THREE.Vector3(s * (px - 0.06), top + 0.42, pz - 0.35),
+    new THREE.Vector3(s * (px - 0.06), top + 0.46, 0),
+    new THREE.Vector3(s * (px - 0.06), top + 0.42, -pz + 0.35),
+    new THREE.Vector3(s * (px - 0.06), top, -pz + 0.05),
+  ], false, 'centripetal')), [px, pz, top]);
   return (
     <group>
-      {posts.map(([x, z], i) => (
-        <mesh key={i} position={[x * (WIDTH / 2 + 0.06), 0, z * (DEPTH / 2)]} castShadow>
-          <boxGeometry args={[0.12, h, 0.12]} />
-          <meshStandardMaterial color={C.frame} metalness={0.6} roughness={0.45} />
-        </mesh>
+      {[[-1, -1], [1, -1], [-1, 1], [1, 1]].map(([x, z], i) => (
+        <group key={i}>
+          <Bar size={[0.16, top - bottom, 0.16]} position={[x * px, (top + bottom) / 2, z * pz]} />
+          <mesh position={[x * px, FLOOR + 0.05, z * pz]}>
+            <cylinderGeometry args={[0.07, 0.08, 0.1, 16]} />
+            <meshStandardMaterial color="#8d9196" metalness={0.7} roughness={0.4} />
+          </mesh>
+        </group>
       ))}
-      {[1, -1].map((s) => (
-        <RoundedBox key={s} args={[WIDTH + 0.36, 0.1, DEPTH + 0.16]} radius={0.03} position={[0, (s * h) / 2 + s * 0.05, 0]} castShadow receiveShadow>
-          <meshStandardMaterial color={C.frame} metalness={0.5} roughness={0.5} />
-        </RoundedBox>
+      {/* top and bottom rails, front/back and sides */}
+      {[[top - 0.16, 0.32], [bottom + 0.1, 0.2]].map(([y, h], i) => (
+        <group key={i}>
+          {[-1, 1].map((z) => <Bar key={z} size={[2 * px + 0.16, h, 0.14]} position={[0, y, z * pz]} />)}
+          {[-1, 1].map((x) => <Bar key={x} size={[0.14, h, 2 * pz]} position={[x * px, y, 0]} />)}
+        </group>
       ))}
-      {/* front mounting rails */}
-      {[-1, 1].map((s) => (
-        <mesh key={s} position={[s * (WIDTH / 2 - 0.02), 0, DEPTH / 2 - 0.12]}>
-          <boxGeometry args={[0.1, h, 0.04]} />
-          <meshStandardMaterial color="#14171b" metalness={0.7} roughness={0.4} />
+      {handles.map((c, i) => (
+        <mesh key={i} castShadow>
+          <tubeGeometry args={[c, 48, 0.065, 12, false]} />
+          {silver}
         </mesh>
       ))}
     </group>
   );
 }
 
-function Panel({ h, color = C.panel }: { h: number; color?: string }) {
+function Screw({ x, y }: { x: number; y: number }) {
   return (
-    <mesh position={[0, 0, DEPTH / 2 - 0.06]} castShadow>
-      <boxGeometry args={[WIDTH, h * U - 0.02, 0.05]} />
-      <meshStandardMaterial color={color} metalness={0.55} roughness={0.5} />
+    <mesh position={[x, y, FRONT + 0.055]} rotation={[Math.PI / 2, 0, 0]}>
+      <cylinderGeometry args={[0.045, 0.045, 0.02, 16]} />
+      <meshStandardMaterial color="#d6d9dc" metalness={0.9} roughness={0.25} />
     </mesh>
+  );
+}
+
+// A flat black rack panel with a screw in each ear
+function Panel({ h, children }: { h: number; children?: ReactNode }) {
+  const H = h * U - 0.012;
+  return (
+    <group>
+      <mesh position={[0, 0, FRONT + 0.02]} castShadow>
+        <boxGeometry args={[WIDTH, H, 0.05]} />
+        <meshStandardMaterial color={C.panel} metalness={0.35} roughness={0.55} />
+      </mesh>
+      {[-1, 1].map((x) => [-1, 1].map((y) => <Screw key={`${x}${y}`} x={x * (WIDTH / 2 - 0.1)} y={y * (H / 2 - 0.09)} />))}
+      {children}
+    </group>
   );
 }
 
 function Led({ position, color, on = true, size = 0.025 }: { position: [number, number, number]; color: string; on?: boolean; size?: number }) {
   return (
     <mesh position={position}>
-      <sphereGeometry args={[size, 12, 8]} />
-      <meshStandardMaterial color={color} emissive={color} emissiveIntensity={on ? 3 : 0.05} toneMapped={false} />
+      <boxGeometry args={[size * 1.6, size, 0.01]} />
+      <meshStandardMaterial color={color} emissive={color} emissiveIntensity={on ? 3 : 0.04} toneMapped={false} />
     </mesh>
   );
 }
 
-const portX = (port: number) => -0.62 + (port - 1) * 0.16;
+const portX = (port: number) => -0.66 + (port - 1) * 0.215;
 
+// USW Ultra sitting in a 1U black shelf panel, ports facing out
 function Switch({ nodes, offline }: { nodes: NodeStatus[] | null; offline: boolean }) {
   const used = new Map(NODES.map((n) => [n.port, n.name]));
-  const blink = useRef(0);
+  const tick = useRef(0);
   const [, force] = useState(0);
-  useFrame((_, dt) => { blink.current += dt; if (blink.current > 0.25) { blink.current = 0; force((v) => v + 1); } });
+  useFrame((_, dt) => { tick.current += dt; if (tick.current > 0.2) { tick.current = 0; force((v) => v + 1); } });
+  const z0 = FRONT + 0.045;
   return (
     <group>
-      {/* shelf */}
-      <mesh position={[0, -U / 2 + 0.03, 0.1]} receiveShadow>
-        <boxGeometry args={[WIDTH, 0.03, DEPTH - 0.2]} />
-        <meshStandardMaterial color={C.frame} metalness={0.6} roughness={0.5} />
-      </mesh>
-      <RoundedBox args={[1.6, 0.34, 1.3]} radius={0.05} position={[0, -0.03, 0.35]} castShadow>
-        <meshStandardMaterial color={C.unifi} roughness={0.35} />
+      {/* panel frame around the switch */}
+      <mesh position={[0, U / 2 - 0.03, FRONT + 0.02]}><boxGeometry args={[WIDTH, 0.05, 0.05]} /><meshStandardMaterial color={C.panel} metalness={0.35} roughness={0.55} /></mesh>
+      <mesh position={[0, -U / 2 + 0.035, FRONT + 0.02]}><boxGeometry args={[WIDTH, 0.06, 0.05]} /><meshStandardMaterial color={C.panel} metalness={0.35} roughness={0.55} /></mesh>
+      {[-1, 1].map((x) => (
+        <mesh key={x} position={[x * (WIDTH / 2 - 0.09), 0, FRONT + 0.02]}><boxGeometry args={[0.18, U - 0.012, 0.05]} /><meshStandardMaterial color={C.panel} metalness={0.35} roughness={0.55} /></mesh>
+      ))}
+      {[-1, 1].map((x) => [-1, 1].map((y) => <Screw key={`${x}${y}`} x={x * (WIDTH / 2 - 0.09)} y={y * 0.11} />))}
+      <RoundedBox args={[2.1, 0.3, 1.1]} radius={0.04} position={[0, -0.01, z0 - 0.55]} castShadow>
+        <meshStandardMaterial color={C.unifi} roughness={0.4} />
       </RoundedBox>
-      {Array.from({ length: 8 }, (_, i) => {
+      <Led position={[-0.9, -0.01, z0 + 0.002]} size={0.03} color="#3d8bff" />
+      {Array.from({ length: 7 }, (_, i) => {
         const port = i + 1;
         const name = used.get(port);
         const n = nodes?.find((x) => x.name === name);
-        const up = name ? (offline ? true : (n?.ready ?? true)) : false;
-        const act = up && Math.random() < 0.35 + (n?.cpu ?? 10) / 150;
+        const up = !!name && (offline || (n?.ready ?? true));
+        const act = up && Math.random() < 0.3 + (n?.cpu ?? 10) / 120;
         return (
-          <group key={port} position={[portX(port), -0.05, 1.005]}>
-            <mesh>
-              <boxGeometry args={[0.12, 0.1, 0.02]} />
-              <meshStandardMaterial color="#111" />
+          <group key={port} position={[portX(port), -0.02, z0]}>
+            <mesh position={[0, 0, -0.03]}>
+              <boxGeometry args={[0.16, 0.13, 0.07]} />
+              <meshStandardMaterial color="#141618" roughness={0.8} />
             </mesh>
-            <Led position={[-0.035, 0.075, 0.01]} size={0.012} color={offline ? C.warn : C.ok} on={up} />
-            <Led position={[0.035, 0.075, 0.01]} size={0.012} color="#ffd25e" on={act} />
+            <Led position={[-0.055, 0.09, 0.004]} size={0.018} color="#ffb000" on={act} />
+            <Led position={[0.055, 0.09, 0.004]} size={0.018} color={offline ? C.warn : C.ok} on={up} />
           </group>
         );
       })}
-      <Led position={[0.68, 0.05, 1.005]} size={0.015} color="#4da3ff" />
+      <mesh position={[0.9, -0.02, z0 + 0.002]}><circleGeometry args={[0.018, 12]} /><meshStandardMaterial color="#333" /></mesh>
     </group>
   );
 }
 
+function PortBlock({ y, face, z }: { y: number; face: string; z: number }) {
+  return (
+    <group position={[0, y, z]}>
+      <mesh position={[0, 0, -0.14]}>
+        <boxGeometry args={[0.24, 0.17, 0.28]} />
+        <meshStandardMaterial color={C.steel} metalness={0.6} roughness={0.3} />
+      </mesh>
+      <mesh position={[0, 0, 0.001]}>
+        <planeGeometry args={[0.19, 0.1]} />
+        <meshStandardMaterial color={face} roughness={0.6} />
+      </mesh>
+    </group>
+  );
+}
+
+// One Pi 5 on edge in the panel: USB 2 (black), USB 3 (blue) and Ethernet stacked, PoE HAT glowing behind
 function PiBlade({ x, out, status, offline }: { x: number; out: number; status?: NodeStatus; offline: boolean }) {
   const act = useRef<THREE.MeshStandardMaterial>(null);
   const tRef = useRef(Math.random() * 10);
   useFrame((_, dt) => {
     const cpu = (status?.cpu ?? 8) / 100;
     tRef.current += dt * (2 + cpu * 18);
-    if (act.current) act.current.emissiveIntensity = Math.sin(tRef.current) > 0.6 - cpu ? 3 : 0.05;
+    if (act.current) act.current.emissiveIntensity = Math.sin(tRef.current) > 0.6 - cpu ? 3 : 0.04;
   });
   const ready = status?.ready ?? true;
-  const pwr = offline ? C.warn : ready ? C.ok : C.bad;
-  const front = DEPTH / 2 - 0.1;
+  const link = offline ? C.warn : ready ? C.ok : C.bad;
+  const z = FRONT - 0.01;
   return (
     <group position={[x, 0, out]}>
-      {/* Pi 5 stands on edge in the panel mount, USB/Ethernet end facing out */}
-      <mesh position={[0, 0, front - 0.45]} castShadow>
-        <boxGeometry args={[0.04, 0.56, 0.85]} />
+      <mesh position={[-0.1, 0, z - 0.55]} castShadow>
+        <boxGeometry args={[0.03, 0.56, 0.85]} />
         <meshStandardMaterial color={C.pcb} roughness={0.7} />
       </mesh>
-      {/* PoE HAT with its fan */}
-      <mesh position={[0.12, 0, front - 0.5]} castShadow>
-        <boxGeometry args={[0.05, 0.52, 0.62]} />
-        <meshStandardMaterial color="#202833" roughness={0.6} />
+      <mesh position={[0.12, 0, z - 0.6]}>
+        <boxGeometry args={[0.05, 0.52, 0.65]} />
+        <meshStandardMaterial color="#1b1e22" roughness={0.6} />
       </mesh>
-      <mesh position={[0.15, 0.02, front - 0.5]} rotation={[0, 0, Math.PI / 2]}>
-        <cylinderGeometry args={[0.16, 0.16, 0.02, 24]} />
-        <meshStandardMaterial color="#111418" />
+      <mesh position={[0.24, 0, z - 0.7]}>
+        <planeGeometry args={[0.12, 0.4]} />
+        <meshStandardMaterial color="#3a0808" emissive="#ff2a2a" emissiveIntensity={0.45} toneMapped={false} side={THREE.DoubleSide} />
       </mesh>
-      {/* NVMe base on the other side */}
-      <mesh position={[-0.07, 0, front - 0.45]}>
-        <boxGeometry args={[0.03, 0.5, 0.7]} />
-        <meshStandardMaterial color="#333a44" metalness={0.4} />
-      </mesh>
-      {/* ethernet + 2 USB stacks */}
-      <mesh position={[0.05, 0.16, front]}>
-        <boxGeometry args={[0.13, 0.17, 0.1]} />
-        <meshStandardMaterial color={C.steel} metalness={0.8} roughness={0.3} />
-      </mesh>
-      {[-0.03, -0.2].map((y) => (
-        <mesh key={y} position={[0.05, y, front]}>
-          <boxGeometry args={[0.15, 0.13, 0.1]} />
-          <meshStandardMaterial color={C.steel} metalness={0.8} roughness={0.3} />
+      <PortBlock y={0.22} face="#111" z={z} />
+      <PortBlock y={0.03} face="#1e5fd6" z={z} />
+      <group position={[0, -0.18, z]}>
+        <mesh position={[0, 0, -0.14]}>
+          <boxGeometry args={[0.25, 0.2, 0.28]} />
+          <meshStandardMaterial color={C.steel} metalness={0.6} roughness={0.3} />
         </mesh>
-      ))}
-      <Led position={[-0.05, 0.22, front + 0.03]} size={0.018} color={pwr} />
-      <mesh position={[-0.05, 0.16, front + 0.03]}>
-        <sphereGeometry args={[0.018, 12, 8]} />
-        <meshStandardMaterial ref={act} color={C.ok} emissive={C.ok} emissiveIntensity={0.05} toneMapped={false} />
-      </mesh>
+        <mesh position={[0, -0.015, 0.001]}>
+          <planeGeometry args={[0.18, 0.13]} />
+          <meshStandardMaterial color="#0d0e10" />
+        </mesh>
+        <Led position={[-0.085, 0.075, 0.004]} size={0.02} color={link} />
+        <mesh position={[0.085, 0.075, 0.004]}>
+          <boxGeometry args={[0.029, 0.018, 0.01]} />
+          <meshStandardMaterial ref={act} color="#ffb000" emissive="#ffb000" emissiveIntensity={0.04} toneMapped={false} />
+        </mesh>
+      </group>
     </group>
   );
 }
 
-const bladeX = (i: number) => -0.78 + i * 0.52;
+const bladeX = (i: number) => -0.84 + i * 0.56;
+const WIN = { w: 0.38, h: 0.7 };
+
+// Faint diagonal hatch, like the 3D-printed infill of the real panel
+function useHatch() {
+  return useMemo(() => {
+    const c = document.createElement('canvas');
+    c.width = c.height = 64;
+    const g = c.getContext('2d')!;
+    g.fillStyle = '#eceff1'; g.fillRect(0, 0, 64, 64);
+    g.strokeStyle = 'rgba(120,130,140,.18)'; g.lineWidth = 2;
+    for (let i = -64; i < 128; i += 10) {
+      g.beginPath(); g.moveTo(i, 0); g.lineTo(i + 64, 64); g.stroke();
+      g.beginPath(); g.moveTo(i + 64, 0); g.lineTo(i, 64); g.stroke();
+    }
+    const t = new THREE.CanvasTexture(c);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.repeat.set(6, 2);
+    t.colorSpace = THREE.SRGBColorSpace;
+    return t;
+  }, []);
+}
 
 function Pis({ explode, nodes, offline }: { explode: boolean; nodes: NodeStatus[] | null; offline: boolean }) {
   const out = useRef(0);
   const [o, setO] = useState(0);
+  const hatch = useHatch();
   useFrame((_, dt) => {
     const tgt = explode ? 0.9 : 0;
     if (Math.abs(out.current - tgt) > 0.001) { out.current += (tgt - out.current) * (1 - Math.exp(-dt * 6)); setO(out.current); }
   });
+  const H = 2 * U - 0.012;
+  const mat = <meshStandardMaterial map={hatch} color="#f2f4f5" roughness={0.65} transparent opacity={0.9} />;
+  // strips between the four windows
+  const edges = [-WIDTH / 2, ...NODES.flatMap((_, i) => [bladeX(i) - WIN.w / 2, bladeX(i) + WIN.w / 2]), WIDTH / 2];
+  const strips = [];
+  for (let i = 0; i < edges.length; i += 2) strips.push([edges[i], edges[i + 1]]);
+  const band = (H - WIN.h) / 2;
   return (
     <group>
-      {/* panel frame with four bays */}
-      {[-1, 1].map((s) => (
-        <mesh key={s} position={[0, s * (U - 0.04), DEPTH / 2 - 0.06]}>
-          <boxGeometry args={[WIDTH, 0.06, 0.05]} />
-          <meshStandardMaterial color={C.panel} metalness={0.55} roughness={0.5} />
+      {[1, -1].map((s) => (
+        <mesh key={s} position={[0, s * (H / 2 - band / 2), FRONT + 0.02]}>
+          <boxGeometry args={[WIDTH, band, 0.05]} />
+          {mat}
         </mesh>
       ))}
+      {strips.map(([a, b]) => (
+        <mesh key={a} position={[(a + b) / 2, 0, FRONT + 0.02]}>
+          <boxGeometry args={[b - a, WIN.h, 0.05]} />
+          {mat}
+        </mesh>
+      ))}
+      {[-1, 1].map((x) => [-1, 1].map((y) => <Screw key={`${x}${y}`} x={x * (WIDTH / 2 - 0.1)} y={y * (H / 2 - 0.08)} />))}
       {NODES.map((n, i) => (
         <PiBlade key={n.name} x={bladeX(i)} out={o} status={nodes?.find((s) => s.name === n.name)} offline={offline} />
       ))}
@@ -260,72 +350,93 @@ function Screen({ feed }: { feed: Feed }) {
     tex.needsUpdate = true;
   });
   return (
-    <group>
-      <Panel h={2} color="#16191d" />
-      <mesh position={[0, 0, DEPTH / 2 - 0.03]}>
-        <planeGeometry args={[2.0, 0.625]} />
+    <Panel h={2}>
+      <mesh position={[0, 0.0, FRONT + 0.047]}>
+        <planeGeometry args={[2.08, 0.65]} />
         <meshBasicMaterial map={tex} toneMapped={false} />
       </mesh>
-    </group>
+      {/* glass */}
+      <mesh position={[0, 0, FRONT + 0.05]}>
+        <planeGeometry args={[2.1, 0.67]} />
+        <meshPhysicalMaterial color="#000" transparent opacity={0.12} roughness={0.05} metalness={0} clearcoat={1} />
+      </mesh>
+    </Panel>
   );
 }
 
 function Blank({ h }: { h: number }) {
   return (
     <group>
-      <Panel h={h} />
-      {Array.from({ length: 9 }, (_, i) => (
-        <mesh key={i} position={[-0.96 + i * 0.24, 0, DEPTH / 2 - 0.03]}>
-          <boxGeometry args={[0.05, h * U * 0.55, 0.01]} />
-          <meshStandardMaterial color="#15181c" />
-        </mesh>
-      ))}
-    </group>
-  );
-}
-
-function Cables({ explode }: { explode: boolean }) {
-  // PoE patch cables from switch ports down to each Pi's ethernet jack
-  const curves = useMemo(() => NODES.map((n) => {
-    const i = NODES.indexOf(n);
-    const sw = uY(2, 1), pi = uY(3, 2);
-    const a = new THREE.Vector3(portX(n.port), sw - 0.05, 1.05);
-    const b = new THREE.Vector3(bladeX(i) + 0.05, pi + 0.16, DEPTH / 2 - 0.04 + (explode ? 0.9 : 0));
-    const m1 = a.clone().add(new THREE.Vector3(0, -0.05, 0.25 + i * 0.05));
-    const m2 = b.clone().add(new THREE.Vector3(0, 0.15, 0.2));
-    return new THREE.CatmullRomCurve3([a, m1, m2, b]);
-  }), [explode]);
-  const pulses = useRef<THREE.Mesh[]>([]);
-  useFrame(({ clock }) => {
-    pulses.current.forEach((m, i) => {
-      if (!m) return;
-      m.position.copy(curves[i].getPoint((clock.elapsedTime * 0.35 + i * 0.27) % 1));
-    });
-  });
-  const colors = ['#4de1ff', '#ffd25e', '#b48cff', '#5ef2a0'];
-  return (
-    <group>
-      {curves.map((c, i) => (
-        <group key={i}>
-          <mesh>
-            <tubeGeometry args={[c, 40, 0.018, 8, false]} />
-            <meshStandardMaterial color={colors[i]} roughness={0.5} />
-          </mesh>
-          <mesh ref={(m) => { if (m) pulses.current[i] = m; }}>
-            <sphereGeometry args={[0.03, 10, 8]} />
-            <meshStandardMaterial color="#fff" emissive={colors[i]} emissiveIntensity={4} toneMapped={false} />
-          </mesh>
+      {Array.from({ length: h }, (_, i) => (
+        <group key={i} position={[0, ((h - 1) / 2 - i) * U, 0]}>
+          <Panel h={1} />
         </group>
       ))}
     </group>
   );
 }
 
-function NasTower({ selected, onSelect }: { selected: boolean; onSelect: (i: Selectable) => void }) {
-  const size: [number, number, number] = [1.6, 3.4, 3.0];
-  const y = -TOP + size[1] / 2 - 0.1;
+// Short black patch cables with clear boots: switch port down and looping up into each Pi's Ethernet jack
+function Cables({ explode }: { explode: boolean }) {
+  const sw = uY(3, 1), pi = uY(4, 2);
+  const lines = useMemo(() => {
+    const patch = NODES.map((n, i) => {
+      const sx = portX(n.port), bx = bladeX(i), dz = explode ? 0.9 : 0;
+      const a = new THREE.Vector3(sx, sw - 0.14, FRONT + 0.13);
+      const b = new THREE.Vector3(bx, pi - 0.33 , FRONT + 0.12 + dz);
+      return new THREE.CatmullRomCurve3([
+        a,
+        new THREE.Vector3(sx + (bx - sx) * 0.15, sw - 0.45, FRONT + 0.2 + dz * 0.3),
+        new THREE.Vector3((sx + bx) / 2 + (bx < sx ? -0.08 : 0.08), pi - 0.25, FRONT + 0.26 + dz * 0.7),
+        new THREE.Vector3(bx + (sx - bx) * 0.1, pi - 0.58, FRONT + 0.2 + dz),
+        b,
+      ], false, 'centripetal');
+    });
+    // node-3's micro-HDMI lead to the screen, dropping past the blanks
+    const hx = bladeX(0) - 0.14, dz = explode ? 0.9 : 0;
+    const hdmi = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(hx + 0.06, pi + 0.12, FRONT + 0.04 + dz),
+      new THREE.Vector3(hx - 0.02, pi - 0.2, FRONT + 0.14 + dz),
+      new THREE.Vector3(hx - 0.04, uY(6, 1), FRONT + 0.12),
+      new THREE.Vector3(hx - 0.02, uY(6, 1) - 0.3, FRONT - 0.2),
+    ], false, 'centripetal');
+    return { patch, hdmi, ends: NODES.map((n, i) => ({ s: [portX(n.port), sw - 0.07, FRONT + 0.11] as const, b: [bladeX(i), pi - 0.26, FRONT + 0.1 + dz] as const })) };
+  }, [explode, sw, pi]);
+  const pulses = useRef<THREE.Mesh[]>([]);
+  useFrame(({ clock }) => {
+    pulses.current.forEach((m, i) => {
+      if (m) m.position.copy(lines.patch[i].getPoint((clock.elapsedTime * 0.3 + i * 0.27) % 1));
+    });
+  });
+  const boot = <meshPhysicalMaterial color="#f4f8ff" transparent opacity={0.45} roughness={0.1} clearcoat={1} />;
   return (
-    <Hoverable item={NAS} selected={selected} onSelect={onSelect} size={size} position={[3.0, y, -0.3]}>
+    <group>
+      {lines.patch.map((c, i) => (
+        <group key={i}>
+          <mesh castShadow>
+            <tubeGeometry args={[c, 48, 0.022, 8, false]} />
+            <meshStandardMaterial color="#121315" roughness={0.55} />
+          </mesh>
+          <mesh ref={(m) => { if (m) pulses.current[i] = m; }}>
+            <sphereGeometry args={[0.022, 10, 8]} />
+            <meshStandardMaterial color="#fff" emissive={C.accent} emissiveIntensity={3} toneMapped={false} />
+          </mesh>
+          <mesh position={lines.ends[i].s as unknown as THREE.Vector3Tuple}><boxGeometry args={[0.12, 0.16, 0.12]} />{boot}</mesh>
+          <mesh position={lines.ends[i].b as unknown as THREE.Vector3Tuple}><boxGeometry args={[0.12, 0.16, 0.12]} />{boot}</mesh>
+        </group>
+      ))}
+      <mesh>
+        <tubeGeometry args={[lines.hdmi, 40, 0.02, 8, false]} />
+        <meshStandardMaterial color="#121315" roughness={0.55} />
+      </mesh>
+    </group>
+  );
+}
+
+function NasTower({ selected, onSelect }: { selected: boolean; onSelect: (i: Selectable) => void }) {
+  const size: [number, number, number] = [1.6, 3.2, 2.8];
+  return (
+    <Hoverable item={NAS} selected={selected} onSelect={onSelect} size={size} position={[3.1, FLOOR + size[1] / 2, -0.6]}>
       <RoundedBox args={size} radius={0.06} castShadow receiveShadow>
         <meshStandardMaterial color="#202429" metalness={0.3} roughness={0.55} />
       </RoundedBox>
@@ -394,7 +505,7 @@ function Rack({ feed, explode, selected, onSelect }: {
 }
 
 function focusFor(item: Selectable | null): THREE.Vector3 {
-  if (!item) return new THREE.Vector3(0.4, 0, 0);
+  if (!item) return new THREE.Vector3(0.3, 0.1, 0);
   if (item.id === NAS.id) return new THREE.Vector3(2.2, -0.4, 0);
   const r = item as RackItem;
   return new THREE.Vector3(-0.8, uY(r.u, r.h), 0.6);
@@ -450,7 +561,7 @@ export default function RackScene() {
             shadows
             dpr={[1, 1.5]}
             frameloop={visible ? 'always' : 'never'}
-            camera={{ position: [4.2, 2.4, 7.2], fov: 38 }}
+            camera={{ position: [2.6, 1.6, 8], fov: 38 }}
             onPointerMissed={() => setSelected(null)}
             aria-label="Interactive 3D model of the homelab rack"
           >
@@ -458,12 +569,12 @@ export default function RackScene() {
             <ambientLight intensity={0.35} />
             <directionalLight position={[4, 6, 5]} intensity={1.6} castShadow shadow-mapSize={[1024, 1024]} />
             <Environment resolution={64}>
-              <Lightformer intensity={2} position={[0, 4, 4]} scale={[8, 2, 1]} />
+              <Lightformer intensity={3} position={[0, 4, 4]} scale={[8, 2, 1]} />
               <Lightformer intensity={1} position={[-5, 1, 0]} rotation-y={Math.PI / 2} scale={[6, 4, 1]} color="#8fb8ff" />
               <Lightformer intensity={0.8} position={[5, 1, -2]} rotation-y={-Math.PI / 2} scale={[6, 4, 1]} color="#ffd9b0" />
             </Environment>
             <Rack feed={feed} explode={explode} selected={selected} onSelect={setSelected} />
-            <ContactShadows position={[0, -TOP - 0.12, 0]} opacity={0.6} scale={12} blur={2.4} far={4} />
+            <ContactShadows position={[-0.8, FLOOR, 0]} opacity={0.6} scale={12} blur={2.4} far={4} />
             <OrbitControls
               ref={controls}
               enablePan={false}
