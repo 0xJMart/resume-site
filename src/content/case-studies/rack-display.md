@@ -38,7 +38,14 @@ A few details made it feel right:
 
 ## Getting it onto the screen
 
-The screen is driven by a Pi in the same cluster, so the kiosk is just another Kubernetes Deployment: a small Debian image running the cage Wayland compositor and Chromium in kiosk mode. It's pinned to the node wired to the screen and given access to the GPU and touch input. Everything ships through the same Flux image automation as the rest of the cluster. The kiosk image is built and deployed at zero replicas; it scales up once the panel is cabled to its node.
+The screen is driven by a Pi in the same cluster, so the kiosk is just another Kubernetes Deployment: a small Debian image running the cage Wayland compositor and Chromium in kiosk mode. It's pinned to the node wired to the screen and given access to the GPU and touch input. Everything ships through the same Flux image automation as the rest of the cluster.
+
+Getting it running on real hardware turned up four problems:
+
+- **Mounted upside down.** The cables only reach with the panel flipped, so the kiosk rotates its output in the compositor rather than in CSS. Rotating the picture doesn't rotate touch, so a calibration rule on the node flips touch to match. Without it, every swipe went the wrong way.
+- **Software rendering.** The GPU's render device belongs to a different group ID on the node than inside the image, so the compositor quietly fell back to the CPU. The container now joins whatever groups own the devices it's given.
+- **Touch lost on replug.** Device hotplug events are delivered per network namespace, so a pod never heard the touch screen come back. The kiosk now uses the node's network.
+- **Not enough power.** A Pi 5 on a PoE HAT caps its USB ports at 600 mA, too little for the screen. A bootloader setting tells the Pi it has a 5 A supply, and so far the node hasn't reported any undervoltage.
 
 One service had no Prometheus exporter that runs on ARM, so I wrote a small one.
 
